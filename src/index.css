@@ -95,3 +95,19 @@ body {
 .auth-box input { background: #070a0f; border: 1px solid #1f2733; color: #e6ebf2; border-radius: 8px; padding: 10px; font-size: 15px; }
 .auth-box button { background: #3b82f6; color: #fff; border: none; border-radius: 8px; padding: 10px; font-size: 15px; cursor: pointer; }
 .auth-box button.link { background: none; color: #8a94a6; font-size: 13px; }
+.pw { position: relative; }
+.pw input { width: 100%; padding-left: 44px; }
+.pw .eye {
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+}
+.auth-box .msg { font-size: 13px; margin: 0; }
+.auth-box .msg.ok { color: #22c55e; }
+.auth-box button:disabled { opacity: 0.6; cursor: default; }
