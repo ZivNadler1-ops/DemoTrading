@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createChart, LineSeries } from 'lightweight-charts';
 import Lenis from 'lenis';
 import gsap from 'gsap';
+import RiskPanel from './RiskPanel';
 import './index.css';
 
 const SYMBOLS = ['NVDA', 'AMD', 'AVGO', 'MU', 'INTC'];
@@ -25,7 +26,6 @@ export default function App() {
   const headerRef = useRef(null);
   const loadedOnce = useRef(false);
 
-  // גלילה חלקה (Lenis)
   useEffect(() => {
     const lenis = new Lenis();
     let frame;
@@ -40,12 +40,10 @@ export default function App() {
     };
   }, []);
 
-  // כניסה של הכותרת (GSAP)
   useEffect(() => {
     gsap.from(headerRef.current, { opacity: 0, y: -12, duration: 0.6, ease: 'power2.out' });
   }, []);
 
-  // משיכת מחירים מהשרת
   useEffect(() => {
     let cancelled = false;
 
@@ -90,7 +88,6 @@ export default function App() {
     };
   }, []);
 
-  // יצירת הגרף פעם אחת
   useEffect(() => {
     const chart = createChart(chartRef.current, {
       width: chartRef.current.clientWidth,
@@ -110,13 +107,11 @@ export default function App() {
     };
   }, []);
 
-  // עדכון הנתונים בגרף כשהמניה או ההיסטוריה משתנים
   useEffect(() => {
     const data = history[selected] || [];
     seriesRef.current?.setData(data.map((p) => ({ time: p.time, value: p.value })));
   }, [history, selected]);
 
-  // צבע הגרף: ירוק בעלייה, אדום בירידה
   useEffect(() => {
     const up = quotes[selected] ? quotes[selected].change >= 0 : true;
     seriesRef.current?.applyOptions({ color: up ? '#22c55e' : '#ef4444' });
@@ -180,6 +175,8 @@ export default function App() {
           הגרף מתעדכן כל 15 שניות, ומתחיל ברגע שפתחת את הדף. מחוץ לשעות המסחר של ארה"ב המחירים לא מתעדכנים.
         </p>
       </section>
+
+      <RiskPanel symbol={selected} price={q?.price} />
     </div>
   );
 }
