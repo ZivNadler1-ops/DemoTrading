@@ -3,6 +3,8 @@ import { createChart, LineSeries } from 'lightweight-charts';
 import Lenis from 'lenis';
 import gsap from 'gsap';
 import RiskPanel from './RiskPanel';
+import Auth from './Auth';
+import { supabase } from './lib/supabase';
 import './index.css';
 
 const SYMBOLS = ['NVDA', 'AMD', 'AVGO', 'MU', 'INTC'];
@@ -17,6 +19,8 @@ function isMarketOpen() {
 }
 
 export default function App() {
+  const [session, setSession] = useState(null);
+  const [checking, setChecking] = useState(true);
   const [quotes, setQuotes] = useState({});
   const [selected, setSelected] = useState('NVDA');
   const [history, setHistory] = useState({});
@@ -26,6 +30,17 @@ export default function App() {
   const headerRef = useRef(null);
   const loadedOnce = useRef(false);
 
+  // בדיקה אם המשתמש מחובר
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setChecking(false);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  // גלילה חלקה (Lenis)
   useEffect(() => {
     const lenis = new Lenis();
     let frame;
@@ -40,10 +55,14 @@ export default function App() {
     };
   }, []);
 
+  // כניסה של הכותרת (GSAP)
   useEffect(() => {
-    gsap.from(headerRef.current, { opacity: 0, y: -12, duration: 0.6, ease: 'power2.out' });
-  }, []);
+    if (headerRef.current) {
+      gsap.from(headerRef.current, { opacity: 0, y: -12, duration: 0.6, ease: 'power2.out' });
+    }
+  }, [session]);
 
+  // משיכת מחירים מהשרת
   useEffect(() => {
     let cancelled = false;
 
@@ -88,7 +107,9 @@ export default function App() {
     };
   }, []);
 
+  // יצירת הגרף פעם אחת
   useEffect(() => {
+    if (!chartRef.current) return;
     const chart = createChart(chartRef.current, {
       width: chartRef.current.clientWidth,
       height: 360,
@@ -105,7 +126,7 @@ export default function App() {
       window.removeEventListener('resize', resize);
       chart.remove();
     };
-  }, []);
+  }, [session]);
 
   useEffect(() => {
     const data = history[selected] || [];
@@ -116,6 +137,10 @@ export default function App() {
     const up = quotes[selected] ? quotes[selected].change >= 0 : true;
     seriesRef.current?.applyOptions({ color: up ? '#22c55e' : '#ef4444' });
   }, [quotes, selected]);
+
+  // אחרי כל ה-hooks: טעינה, או מסך כניסה אם אין משתמש
+  if (checking) return null;
+  if (!session) return <Auth />;
 
   const q = quotes[selected];
   const open = isMarketOpen();
