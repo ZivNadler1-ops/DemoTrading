@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { createChart, LineSeries } from 'lightweight-charts';
-import RiskPanel from './RiskPanel';
 import TradePanel from './TradePanel';
 import { NAMES } from './Market';
 
@@ -57,8 +56,6 @@ export default function StockPage({ symbol, quote, history, userId, onBack, onTr
       <p className="note">
         הגרף מתעדכן כל 15 שניות, ומתחיל ברגע שפתחת את הדף. מחוץ לשעות המסחר של ארה"ב המחירים לא מתעדכנים.
       </p>
-
-      <RiskPanel symbol={symbol} price={quote?.price} />
 
       {tradeOpen && (
         <TradePanel
