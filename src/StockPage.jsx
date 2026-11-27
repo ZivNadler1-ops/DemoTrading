@@ -1,23 +1,46 @@
 import { useEffect, useRef, useState } from 'react';
-import { createChart, LineSeries } from 'lightweight-charts';
+import { createChart, CandlestickSeries, BarSeries, LineSeries, AreaSeries, HistogramSeries } from 'lightweight-charts';
 import TradePanel from './TradePanel';
 import { NAMES } from './Market';
 
+const RANGES = [
+  { key: '1m', label: '1 דקה' },
+  { key: '5m', label: '5 דקות' },
+  { key: '15m', label: '15 דקות' },
+  { key: '1h', label: 'שעה' },
+  { key: '1d', label: 'יום' },
+  { key: '1w', label: 'שבוע' },
+  { key: '1mo', label: 'חודש' },
+];
+
+const TYPES = [
+  { key: 'candle', label: 'נר' },
+  { key: 'bar', label: 'עמודות' },
+  { key: 'line', label: 'קו' },
+  { key: 'area', label: 'שטח' },
+];
+
 export default function StockPage({ symbol, quote, history, userId, onBack, onTraded }) {
   const chartRef = useRef(null);
+  const chartObj = useRef(null);
   const seriesRef = useRef(null);
+  const [range, setRange] = useState('1d');
+  const [type, setType] = useState('candle');
   const [tradeOpen, setTradeOpen] = useState(false);
+  const [bars, setBars] = useState([]);
+  const [loading, setLoading] = useState(false);
 
+  // יצירת הגרף פעם אחת
   useEffect(() => {
     const chart = createChart(chartRef.current, {
       width: chartRef.current.clientWidth,
-      height: 420,
+      height: 440,
       layout: { background: { color: '#0b0f14' }, textColor: '#8a94a6' },
       grid: { vertLines: { color: '#161c26' }, horzLines: { color: '#161c26' } },
       rightPriceScale: { borderColor: '#1f2733' },
-      timeScale: { borderColor: '#1f2733', timeVisible: true, secondsVisible: true },
+      timeScale: { borderColor: '#1f2733', timeVisible: true, secondsVisible: false },
     });
-    seriesRef.current = chart.addSeries(LineSeries, { color: '#22c55e', lineWidth: 2 });
+    chartObj.current = chart;
     const resize = () => chart.applyOptions({ width: chartRef.current.clientWidth });
     window.addEventListener('resize', resize);
     return () => {
@@ -26,20 +49,78 @@ export default function StockPage({ symbol, quote, history, userId, onBack, onTr
     };
   }, []);
 
+  // טעינת נרות מהשרת כשמשנים טווח
   useEffect(() => {
-    seriesRef.current?.setData((history || []).map((p) => ({ time: p.time, value: p.value })));
-    const up = quote ? quote.change >= 0 : true;
-    seriesRef.current?.applyOptions({ color: up ? '#22c55e' : '#ef4444' });
-  }, [history, quote]);
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/api/candles?symbol=${symbol}&range=${range}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled && Array.isArray(data)) setBars(data);
+      })
+      .catch(() => {})
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [symbol, range]);
+
+  // יצירת סדרת הגרף מחדש כשמשנים סוג
+  useEffect(() => {
+    const chart = chartObj.current;
+    if (!chart) return;
+    if (seriesRef.current) chart.removeSeries(seriesRef.current);
+
+    const up = '#22c55e';
+    const down = '#ef4444';
+    let series;
+    if (type === 'candle') {
+      series = chart.addSeries(CandlestickSeries, { upColor: up, downColor: down, borderVisible: false, wickUpColor: up, wickDownColor: down });
+    } else if (type === 'bar') {
+      series = chart.addSeries(BarSeries, { upColor: up, downColor: down });
+    } else if (type === 'line') {
+      series = chart.addSeries(LineSeries, { color: up, lineWidth: 2 });
+    } else {
+      series = chart.addSeries(AreaSeries, { lineColor: up, topColor: 'rgba(34,197,94,0.25)', bottomColor: 'rgba(34,197,94,0)' });
+    }
+    seriesRef.current = series;
+  }, [type]);
+
+  // הצגת הנתונים בגרף
+  useEffect(() => {
+    if (!seriesRef.current || bars.length === 0) return;
+    const data =
+      type === 'line' || type === 'area'
+        ? bars.map((b) => ({ time: b.time, value: b.c }))
+        : bars.map((b) => ({ time: b.time, open: b.o, high: b.h, low: b.l, close: b.c }));
+    seriesRef.current.setData(data);
+    chartObj.current?.timeScale().fitContent();
+  }, [bars, type]);
+
+  // עדכון הנקודה האחרונה לפי המחיר החי
+  useEffect(() => {
+    if (!seriesRef.current || !quote || bars.length === 0) return;
+    const last = bars[bars.length - 1];
+    const price = quote.price;
+    if (type === 'line' || type === 'area') {
+      seriesRef.current.update({ time: last.time, value: price });
+    } else {
+      seriesRef.current.update({
+        time: last.time,
+        open: last.o,
+        high: Math.max(last.h, price),
+        low: Math.min(last.l, price),
+        close: price,
+      });
+    }
+  }, [quote, bars, type]);
 
   return (
     <div>
       <button className="back" onClick={onBack}>חזרה לשוק</button>
 
       <div className="stock-head">
-        <h2>
-          {NAMES[symbol]} ({symbol})
-        </h2>
+        <h2>{NAMES[symbol]} ({symbol})</h2>
         {quote && (
           <span className="price">
             ${quote.price.toFixed(2)}{' '}
@@ -52,9 +133,30 @@ export default function StockPage({ symbol, quote, history, userId, onBack, onTr
         <button className="trade-btn" onClick={() => setTradeOpen(true)}>מסחר</button>
       </div>
 
-      <div ref={chartRef} dir="ltr" className="chart" />
+      <div className="chart-bar">
+        <div className="seg-group">
+          {RANGES.map((r) => (
+            <button key={r.key} className={range === r.key ? 'chip on' : 'chip'} onClick={() => setRange(r.key)}>
+              {r.label}
+            </button>
+          ))}
+        </div>
+        <div className="seg-group">
+          {TYPES.map((t) => (
+            <button key={t.key} className={type === t.key ? 'chip on' : 'chip'} onClick={() => setType(t.key)}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="chart-wrap">
+        {loading && <p className="note">טוען נתונים...</p>}
+        <div ref={chartRef} dir="ltr" className="chart" />
+      </div>
+
       <p className="note">
-        הגרף מתעדכן כל 15 שניות, ומתחיל ברגע שפתחת את הדף. מחוץ לשעות המסחר של ארה"ב המחירים לא מתעדכנים.
+        הנתונים מ-Alpaca מתעכבים ב-15 דקות (בתוכנית החינמית). המחיר האחרון מתעדכן כל 15 שניות.
       </p>
 
       {tradeOpen && (
