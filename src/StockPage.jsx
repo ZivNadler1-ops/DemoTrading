@@ -4,6 +4,7 @@ import TradePanel from './TradePanel';
 import { NAMES } from './Market';
 
 const TF_OPTIONS = [
+  { value: '1Min', label: 'דקה' },
   { value: '5Min', label: '5 דקות' },
   { value: '15Min', label: '15 דקות' },
   { value: '1Hour', label: 'שעה' },
@@ -13,6 +14,9 @@ const TF_OPTIONS = [
 ];
 
 const RANGES_BY_TF = {
+  '1Min': [
+    { value: 1, label: 'יום' },
+  ],
   '5Min': [
     { value: 5, label: '5 ימים' },
     { value: 30, label: 'חודש' },
@@ -96,7 +100,6 @@ export default function StockPage({ symbol, quote, userId, onBack, onTraded }) {
     }
   }
 
-  // יצירת הגרף פעם אחת
   useEffect(() => {
     const chart = createChart(chartRef.current, {
       width: chartRef.current.clientWidth,
@@ -115,7 +118,6 @@ export default function StockPage({ symbol, quote, userId, onBack, onTraded }) {
     };
   }, []);
 
-  // טעינת נתונים בכל שינוי מסגרת או טווח
   useEffect(() => {
     let cancelled = false;
     setBars([]);
@@ -134,7 +136,6 @@ export default function StockPage({ symbol, quote, userId, onBack, onTraded }) {
     };
   }, [symbol, tf, days]);
 
-  // החלפת סוג הגרף
   useEffect(() => {
     const chart = chartObj.current;
     if (!chart) return;
@@ -159,7 +160,6 @@ export default function StockPage({ symbol, quote, userId, onBack, onTraded }) {
     seriesRef.current = series;
   }, [type]);
 
-  // הצגת הנתונים, וקביעת התצוגה מחדש לכל הטווח
   useEffect(() => {
     if (!seriesRef.current || bars.length === 0) return;
     const data =
@@ -170,7 +170,6 @@ export default function StockPage({ symbol, quote, userId, onBack, onTraded }) {
     chartObj.current?.timeScale().fitContent();
   }, [bars, type]);
 
-  // עדכון הנר האחרון לפי המחיר החי
   useEffect(() => {
     if (!seriesRef.current || !quote || bars.length === 0) return;
     const last = bars[bars.length - 1];
