@@ -1,35 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
-import { createChart, LineSeries } from 'lightweight-charts';
 import Lenis from 'lenis';
-import gsap from 'gsap';
-import RiskPanel from './RiskPanel';
 import Auth from './Auth';
 import Dashboard from './Dashboard';
+import Market, { isMarketOpen, SYMBOLS } from './Market';
+import StockPage from './StockPage';
 import { supabase } from './lib/supabase';
 import './index.css';
 
-const SYMBOLS = ['NVDA', 'AMD', 'AVGO', 'MU', 'INTC'];
-const NAMES = { NVDA: 'אנבידיה', AMD: 'AMD', AVGO: 'ברודקום', MU: 'מיקרון', INTC: 'אינטל' };
 const POLL_MS = 15000;
-
-function isMarketOpen() {
-  const ny = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
-  const day = ny.getDay();
-  const mins = ny.getHours() * 60 + ny.getMinutes();
-  return day >= 1 && day <= 5 && mins >= 570 && mins < 960;
-}
 
 export default function App() {
   const [session, setSession] = useState(null);
   const [checking, setChecking] = useState(true);
   const [tab, setTab] = useState('dashboard');
+  const [selected, setSelected] = useState(null);
   const [quotes, setQuotes] = useState({});
-  const [selected, setSelected] = useState('NVDA');
   const [history, setHistory] = useState({});
   const [error, setError] = useState('');
-  const chartRef = useRef(null);
-  const seriesRef = useRef(null);
-  const headerRef = useRef(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const loadedOnce = useRef(false);
 
   useEffect(() => {
@@ -54,12 +42,6 @@ export default function App() {
       lenis.destroy();
     };
   }, []);
-
-  useEffect(() => {
-    if (headerRef.current) {
-      gsap.from(headerRef.current, { opacity: 0, y: -12, duration: 0.6, ease: 'power2.out' });
-    }
-  }, [session, tab]);
 
   useEffect(() => {
     let cancelled = false;
@@ -105,56 +87,23 @@ export default function App() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!chartRef.current || tab !== 'market') return;
-    const chart = createChart(chartRef.current, {
-      width: chartRef.current.clientWidth,
-      height: 360,
-      layout: { background: { color: '#0b0f14' }, textColor: '#8a94a6' },
-      grid: { vertLines: { color: '#161c26' }, horzLines: { color: '#161c26' } },
-      rightPriceScale: { borderColor: '#1f2733' },
-      timeScale: { borderColor: '#1f2733', timeVisible: true, secondsVisible: true },
-    });
-    seriesRef.current = chart.addSeries(LineSeries, { color: '#22c55e', lineWidth: 2 });
-
-    const resize = () => chart.applyOptions({ width: chartRef.current.clientWidth });
-    window.addEventListener('resize', resize);
-    return () => {
-      window.removeEventListener('resize', resize);
-      chart.remove();
-      seriesRef.current = null;
-    };
-  }, [session, tab]);
-
-  useEffect(() => {
-    const data = history[selected] || [];
-    seriesRef.current?.setData(data.map((p) => ({ time: p.time, value: p.value })));
-  }, [history, selected, tab]);
-
-  useEffect(() => {
-    const up = quotes[selected] ? quotes[selected].change >= 0 : true;
-    seriesRef.current?.applyOptions({ color: up ? '#22c55e' : '#ef4444' });
-  }, [quotes, selected, tab]);
-
   if (checking) return null;
   if (!session) return <Auth />;
 
-  const q = quotes[selected];
-  const open = isMarketOpen();
+  function openStock(symbol) {
+    setSelected(symbol);
+    setTab('stock');
+  }
+
+  const marketActive = tab === 'market' || tab === 'stock';
 
   return (
     <div dir="rtl" className="page">
       <nav className="nav">
-        <button
-          className={tab === 'dashboard' ? 'navbtn active' : 'navbtn'}
-          onClick={() => setTab('dashboard')}
-        >
+        <button className={tab === 'dashboard' ? 'navbtn active' : 'navbtn'} onClick={() => setTab('dashboard')}>
           לוח בקרה
         </button>
-        <button
-          className={tab === 'market' ? 'navbtn active' : 'navbtn'}
-          onClick={() => setTab('market')}
-        >
+        <button className={marketActive ? 'navbtn active' : 'navbtn'} onClick={() => setTab('market')}>
           שוק
         </button>
         <button className="navbtn" onClick={() => supabase.auth.signOut()}>
@@ -162,73 +111,23 @@ export default function App() {
         </button>
       </nav>
 
+      {error && <p className="error">{error}</p>}
+
       {tab === 'dashboard' && (
-        <>
-          <header className="top" ref={headerRef}>
-            <h1>לוח בקרה</h1>
-          </header>
-          <Dashboard quotes={quotes} userId={session.user.id} />
-        </>
+        <Dashboard key={refreshKey} quotes={quotes} userId={session.user.id} />
       )}
 
-      {tab === 'market' && (
-        <>
-          <header className="top" ref={headerRef}>
-            <h1>סימולציית מסחר</h1>
-            <span className={open ? 'status open' : 'status closed'}>
-              {open ? 'השוק פתוח' : 'השוק סגור'}
-            </span>
-          </header>
+      {tab === 'market' && <Market quotes={quotes} onOpen={openStock} />}
 
-          <div className="tabs">
-            {SYMBOLS.map((s) => {
-              const x = quotes[s];
-              return (
-                <button
-                  key={s}
-                  className={selected === s ? 'tab active' : 'tab'}
-                  onClick={() => setSelected(s)}
-                >
-                  <span className="tab-name">
-                    {NAMES[s]} <small>{s}</small>
-                  </span>
-                  {x && <strong>${x.price.toFixed(2)}</strong>}
-                  {x && (
-                    <em className={x.change >= 0 ? 'pos' : 'neg'}>
-                      {x.changePct.toFixed(2)}%
-                    </em>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {error && <p className="error">{error}</p>}
-
-          <section className="panel">
-            <div className="panel-head">
-              <h2>
-                {NAMES[selected]} ({selected})
-              </h2>
-              {q && (
-                <p className="price">
-                  ${q.price.toFixed(2)}
-                  <span className={q.change >= 0 ? 'pos' : 'neg'}>
-                    {' '}
-                    {q.change >= 0 ? '+' : ''}
-                    {q.change.toFixed(2)} ({q.changePct.toFixed(2)}%)
-                  </span>
-                </p>
-              )}
-            </div>
-            <div ref={chartRef} dir="ltr" className="chart" />
-            <p className="note">
-              הגרף מתעדכן כל 15 שניות, ומתחיל ברגע שפתחת את הדף. מחוץ לשעות המסחר של ארה"ב המחירים לא מתעדכנים.
-            </p>
-          </section>
-
-          <RiskPanel symbol={selected} price={q?.price} />
-        </>
+      {tab === 'stock' && selected && (
+        <StockPage
+          symbol={selected}
+          quote={quotes[selected]}
+          history={history[selected]}
+          userId={session.user.id}
+          onBack={() => setTab('market')}
+          onTraded={() => setRefreshKey((k) => k + 1)}
+        />
       )}
     </div>
   );
