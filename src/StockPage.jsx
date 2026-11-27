@@ -3,43 +3,103 @@ import { createChart, CandlestickSeries, BarSeries, LineSeries, AreaSeries } fro
 import TradePanel from './TradePanel';
 import { NAMES } from './Market';
 
-const TIMEFRAMES = [
-  { key: '1Min', label: '1 דקה' },
-  { key: '5Min', label: '5 דקות' },
-  { key: '15Min', label: '15 דקות' },
-  { key: '1Hour', label: 'שעה' },
-  { key: '1Day', label: 'יום' },
-  { key: '1Week', label: 'שבוע' },
-  { key: '1Month', label: 'חודש' },
+const TF_OPTIONS = [
+  { value: '1Min', label: 'דקה' },
+  { value: '5Min', label: '5 דקות' },
+  { value: '15Min', label: '15 דקות' },
+  { value: '1Hour', label: 'שעה' },
+  { value: '1Day', label: 'יום' },
+  { value: '1Week', label: 'שבוע' },
+  { value: '1Month', label: 'חודש' },
 ];
 
-const SPANS = [
-  { days: 1, label: 'יום' },
-  { days: 5, label: '5 ימים' },
-  { days: 30, label: 'חודש' },
-  { days: 182, label: '6 חודשים' },
-  { days: 365, label: 'שנה' },
-  { days: 1825, label: '5 שנים' },
-  { days: 3650, label: 'הכול' },
+const RANGES_BY_TF = {
+  '1Min': [
+    { value: 1, label: 'יום' },
+    { value: 5, label: '5 ימים' },
+  ],
+  '5Min': [
+    { value: 5, label: '5 ימים' },
+    { value: 30, label: 'חודש' },
+  ],
+  '15Min': [
+    { value: 30, label: 'חודש' },
+    { value: 60, label: '2 חודשים' },
+  ],
+  '1Hour': [
+    { value: 30, label: 'חודש' },
+    { value: 182, label: '6 חודשים' },
+    { value: 365, label: 'שנה' },
+  ],
+  '1Day': [
+    { value: 182, label: '6 חודשים' },
+    { value: 365, label: 'שנה' },
+    { value: 1825, label: '5 שנים' },
+  ],
+  '1Week': [
+    { value: 1825, label: '5 שנים' },
+    { value: 3650, label: 'הכול' },
+  ],
+  '1Month': [
+    { value: 1825, label: '5 שנים' },
+    { value: 3650, label: 'הכול' },
+  ],
+};
+
+const TYPE_OPTIONS = [
+  { value: 'candle', label: 'נר' },
+  { value: 'bar', label: 'עמודות' },
+  { value: 'line', label: 'קו' },
+  { value: 'area', label: 'שטח' },
 ];
 
-const TYPES = [
-  { key: 'candle', label: 'נר' },
-  { key: 'bar', label: 'עמודות' },
-  { key: 'line', label: 'קו' },
-  { key: 'area', label: 'שטח' },
-];
+function Dropdown({ label, current, options, onChange }) {
+  const [open, setOpen] = useState(false);
+  const currentLabel = options.find((o) => o.value === current)?.label ?? '';
+
+  return (
+    <div className="dd">
+      <button className="dd-btn" onClick={() => setOpen(!open)}>
+        {label}: {currentLabel} ▾
+      </button>
+      {open && (
+        <div className="dd-menu">
+          {options.map((o) => (
+            <button
+              key={o.value}
+              className={o.value === current ? 'on' : ''}
+              onClick={() => {
+                onChange(o.value);
+                setOpen(false);
+              }}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function StockPage({ symbol, quote, userId, onBack, onTraded }) {
   const chartRef = useRef(null);
   const chartObj = useRef(null);
   const seriesRef = useRef(null);
   const [tf, setTf] = useState('1Day');
-  const [span, setSpan] = useState(365);
+  const [days, setDays] = useState(365);
   const [type, setType] = useState('candle');
   const [tradeOpen, setTradeOpen] = useState(false);
   const [bars, setBars] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  function changeTf(next) {
+    setTf(next);
+    const list = RANGES_BY_TF[next];
+    if (!list.some((r) => r.value === days)) {
+      setDays(list[list.length - 1].value);
+    }
+  }
 
   useEffect(() => {
     const chart = createChart(chartRef.current, {
@@ -61,8 +121,9 @@ export default function StockPage({ symbol, quote, userId, onBack, onTraded }) {
 
   useEffect(() => {
     let cancelled = false;
+    setBars([]);
     setLoading(true);
-    fetch(`/api/candles?symbol=${symbol}&tf=${tf}&days=${span}`)
+    fetch(`/api/candles?symbol=${symbol}&tf=${tf}&days=${days}`)
       .then((r) => r.json())
       .then((data) => {
         if (!cancelled && Array.isArray(data)) setBars(data);
@@ -74,7 +135,7 @@ export default function StockPage({ symbol, quote, userId, onBack, onTraded }) {
     return () => {
       cancelled = true;
     };
-  }, [symbol, tf, span]);
+  }, [symbol, tf, days]);
 
   useEffect(() => {
     const chart = chartObj.current;
@@ -146,27 +207,9 @@ export default function StockPage({ symbol, quote, userId, onBack, onTraded }) {
       </div>
 
       <div className="chart-bar">
-        <div className="seg-group">
-          {TIMEFRAMES.map((t) => (
-            <button key={t.key} className={tf === t.key ? 'chip on' : 'chip'} onClick={() => setTf(t.key)}>
-              {t.label}
-            </button>
-          ))}
-        </div>
-        <div className="seg-group">
-          {SPANS.map((s) => (
-            <button key={s.days} className={span === s.days ? 'chip on' : 'chip'} onClick={() => setSpan(s.days)}>
-              {s.label}
-            </button>
-          ))}
-        </div>
-        <div className="seg-group">
-          {TYPES.map((t) => (
-            <button key={t.key} className={type === t.key ? 'chip on' : 'chip'} onClick={() => setType(t.key)}>
-              {t.label}
-            </button>
-          ))}
-        </div>
+        <Dropdown label="מסגרת" current={tf} options={TF_OPTIONS} onChange={changeTf} />
+        <Dropdown label="טווח" current={days} options={RANGES_BY_TF[tf]} onChange={setDays} />
+        <Dropdown label="סוג גרף" current={type} options={TYPE_OPTIONS} onChange={setType} />
       </div>
 
       <div className="chart-wrap">
