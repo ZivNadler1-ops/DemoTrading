@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import Lenis from 'lenis';
 import Auth from './Auth';
 import Dashboard from './Dashboard';
-import Market, { isMarketOpen, SYMBOLS } from './Market';
+import Market, { isMarketOpen } from './Market';
 import StockPage from './StockPage';
 import { supabase } from './lib/supabase';
 import './index.css';
@@ -12,13 +12,20 @@ const POLL_MS = 15000;
 export default function App() {
   const [session, setSession] = useState(null);
   const [checking, setChecking] = useState(true);
-  const [tab, setTab] = useState('dashboard');
-  const [selected, setSelected] = useState(null);
+  const [tab, setTab] = useState(() => localStorage.getItem('tab') || 'dashboard');
+  const [selected, setSelected] = useState(() => localStorage.getItem('selected') || null);
   const [quotes, setQuotes] = useState({});
-  const [history, setHistory] = useState({});
   const [error, setError] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
   const loadedOnce = useRef(false);
+
+  useEffect(() => {
+    localStorage.setItem('tab', tab);
+  }, [tab]);
+
+  useEffect(() => {
+    if (selected) localStorage.setItem('selected', selected);
+  }, [selected]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -43,6 +50,7 @@ export default function App() {
     };
   }, []);
 
+  // מושך מחירים: תמיד פעם אחת בטעינה, ובשעות המסחר כל 15 שניות
   useEffect(() => {
     let cancelled = false;
 
@@ -53,26 +61,12 @@ export default function App() {
         const data = await r.json();
         if (!r.ok) throw new Error(data.error || 'שגיאה');
         if (cancelled) return;
-
         loadedOnce.current = true;
-        const now = Math.floor(Date.now() / 1000);
         const map = {};
         data.forEach((q) => {
           map[q.symbol] = q;
         });
         setQuotes(map);
-
-        setHistory((prev) => {
-          const next = { ...prev };
-          data.forEach((q) => {
-            const arr = next[q.symbol] ? [...next[q.symbol]] : [];
-            if (!arr.length || arr[arr.length - 1].time < now) {
-              arr.push({ time: now, value: q.price });
-            }
-            next[q.symbol] = arr;
-          });
-          return next;
-        });
         setError('');
       } catch {
         if (!cancelled) setError('לא הצלחנו לטעון מחירים כרגע');
@@ -123,7 +117,6 @@ export default function App() {
         <StockPage
           symbol={selected}
           quote={quotes[selected]}
-          history={history[selected]}
           userId={session.user.id}
           onBack={() => setTab('market')}
           onTraded={() => setRefreshKey((k) => k + 1)}

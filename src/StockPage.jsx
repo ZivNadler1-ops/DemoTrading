@@ -1,16 +1,26 @@
 import { useEffect, useRef, useState } from 'react';
-import { createChart, CandlestickSeries, BarSeries, LineSeries, AreaSeries, HistogramSeries } from 'lightweight-charts';
+import { createChart, CandlestickSeries, BarSeries, LineSeries, AreaSeries } from 'lightweight-charts';
 import TradePanel from './TradePanel';
 import { NAMES } from './Market';
 
-const RANGES = [
-  { key: '1m', label: '1 דקה' },
-  { key: '5m', label: '5 דקות' },
-  { key: '15m', label: '15 דקות' },
-  { key: '1h', label: 'שעה' },
-  { key: '1d', label: 'יום' },
-  { key: '1w', label: 'שבוע' },
-  { key: '1mo', label: 'חודש' },
+const TIMEFRAMES = [
+  { key: '1Min', label: '1 דקה' },
+  { key: '5Min', label: '5 דקות' },
+  { key: '15Min', label: '15 דקות' },
+  { key: '1Hour', label: 'שעה' },
+  { key: '1Day', label: 'יום' },
+  { key: '1Week', label: 'שבוע' },
+  { key: '1Month', label: 'חודש' },
+];
+
+const SPANS = [
+  { days: 1, label: 'יום' },
+  { days: 5, label: '5 ימים' },
+  { days: 30, label: 'חודש' },
+  { days: 182, label: '6 חודשים' },
+  { days: 365, label: 'שנה' },
+  { days: 1825, label: '5 שנים' },
+  { days: 3650, label: 'הכול' },
 ];
 
 const TYPES = [
@@ -20,17 +30,17 @@ const TYPES = [
   { key: 'area', label: 'שטח' },
 ];
 
-export default function StockPage({ symbol, quote, history, userId, onBack, onTraded }) {
+export default function StockPage({ symbol, quote, userId, onBack, onTraded }) {
   const chartRef = useRef(null);
   const chartObj = useRef(null);
   const seriesRef = useRef(null);
-  const [range, setRange] = useState('1d');
+  const [tf, setTf] = useState('1Day');
+  const [span, setSpan] = useState(365);
   const [type, setType] = useState('candle');
   const [tradeOpen, setTradeOpen] = useState(false);
   const [bars, setBars] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // יצירת הגרף פעם אחת
   useEffect(() => {
     const chart = createChart(chartRef.current, {
       width: chartRef.current.clientWidth,
@@ -49,23 +59,23 @@ export default function StockPage({ symbol, quote, history, userId, onBack, onTr
     };
   }, []);
 
-  // טעינת נרות מהשרת כשמשנים טווח
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetch(`/api/candles?symbol=${symbol}&range=${range}`)
+    fetch(`/api/candles?symbol=${symbol}&tf=${tf}&days=${span}`)
       .then((r) => r.json())
       .then((data) => {
         if (!cancelled && Array.isArray(data)) setBars(data);
       })
       .catch(() => {})
-      .finally(() => !cancelled && setLoading(false));
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
     return () => {
       cancelled = true;
     };
-  }, [symbol, range]);
+  }, [symbol, tf, span]);
 
-  // יצירת סדרת הגרף מחדש כשמשנים סוג
   useEffect(() => {
     const chart = chartObj.current;
     if (!chart) return;
@@ -75,18 +85,21 @@ export default function StockPage({ symbol, quote, history, userId, onBack, onTr
     const down = '#ef4444';
     let series;
     if (type === 'candle') {
-      series = chart.addSeries(CandlestickSeries, { upColor: up, downColor: down, borderVisible: false, wickUpColor: up, wickDownColor: down });
+      series = chart.addSeries(CandlestickSeries, {
+        upColor: up, downColor: down, borderVisible: false, wickUpColor: up, wickDownColor: down,
+      });
     } else if (type === 'bar') {
       series = chart.addSeries(BarSeries, { upColor: up, downColor: down });
     } else if (type === 'line') {
       series = chart.addSeries(LineSeries, { color: up, lineWidth: 2 });
     } else {
-      series = chart.addSeries(AreaSeries, { lineColor: up, topColor: 'rgba(34,197,94,0.25)', bottomColor: 'rgba(34,197,94,0)' });
+      series = chart.addSeries(AreaSeries, {
+        lineColor: up, topColor: 'rgba(34,197,94,0.25)', bottomColor: 'rgba(34,197,94,0)',
+      });
     }
     seriesRef.current = series;
   }, [type]);
 
-  // הצגת הנתונים בגרף
   useEffect(() => {
     if (!seriesRef.current || bars.length === 0) return;
     const data =
@@ -97,7 +110,6 @@ export default function StockPage({ symbol, quote, history, userId, onBack, onTr
     chartObj.current?.timeScale().fitContent();
   }, [bars, type]);
 
-  // עדכון הנקודה האחרונה לפי המחיר החי
   useEffect(() => {
     if (!seriesRef.current || !quote || bars.length === 0) return;
     const last = bars[bars.length - 1];
@@ -135,9 +147,16 @@ export default function StockPage({ symbol, quote, history, userId, onBack, onTr
 
       <div className="chart-bar">
         <div className="seg-group">
-          {RANGES.map((r) => (
-            <button key={r.key} className={range === r.key ? 'chip on' : 'chip'} onClick={() => setRange(r.key)}>
-              {r.label}
+          {TIMEFRAMES.map((t) => (
+            <button key={t.key} className={tf === t.key ? 'chip on' : 'chip'} onClick={() => setTf(t.key)}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <div className="seg-group">
+          {SPANS.map((s) => (
+            <button key={s.days} className={span === s.days ? 'chip on' : 'chip'} onClick={() => setSpan(s.days)}>
+              {s.label}
             </button>
           ))}
         </div>
@@ -156,7 +175,7 @@ export default function StockPage({ symbol, quote, history, userId, onBack, onTr
       </div>
 
       <p className="note">
-        הנתונים מ-Alpaca מתעכבים ב-15 דקות (בתוכנית החינמית). המחיר האחרון מתעדכן כל 15 שניות.
+        הנתונים מ-Alpaca מתעכבים ב-15 דקות (בתוכנית החינמית). המחיר האחרון מתעדכן כל 15 שניות בשעות המסחר.
       </p>
 
       {tradeOpen && (
