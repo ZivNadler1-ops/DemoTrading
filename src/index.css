@@ -111,3 +111,15 @@ body {
 .auth-box .msg { font-size: 13px; margin: 0; }
 .auth-box .msg.ok { color: #22c55e; }
 .auth-box button:disabled { opacity: 0.6; cursor: default; }
+.nav { display: flex; gap: 8px; margin-bottom: 20px; align-items: center; }
+.navbtn { background: #0b0f14; border: 1px solid #1f2733; color: #8a94a6; border-radius: 8px; padding: 8px 14px; cursor: pointer; font-size: 14px; }
+.navbtn.active { color: #e6ebf2; border-color: #3b82f6; }
+.navbtn:last-child { margin-inline-start: auto; }
+.cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+.card { background: #0b0f14; border: 1px solid #1f2733; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px; }
+.card span { font-size: 13px; color: #8a94a6; }
+.card strong { font-size: 22px; font-variant-numeric: tabular-nums; }
+.table { width: 100%; border-collapse: collapse; background: #0b0f14; border: 1px solid #1f2733; border-radius: 12px; overflow: hidden; }
+.table th, .table td { padding: 12px; text-align: right; border-bottom: 1px solid #1f2733; font-variant-numeric: tabular-nums; font-size: 14px; }
+.table th { color: #8a94a6; font-weight: 500; }
+@media (max-width: 720px) { .cards { grid-template-columns: repeat(2, 1fr); } }

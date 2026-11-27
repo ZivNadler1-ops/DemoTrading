@@ -4,6 +4,7 @@ import Lenis from 'lenis';
 import gsap from 'gsap';
 import RiskPanel from './RiskPanel';
 import Auth from './Auth';
+import Dashboard from './Dashboard';
 import { supabase } from './lib/supabase';
 import './index.css';
 
@@ -21,6 +22,7 @@ function isMarketOpen() {
 export default function App() {
   const [session, setSession] = useState(null);
   const [checking, setChecking] = useState(true);
+  const [tab, setTab] = useState('dashboard');
   const [quotes, setQuotes] = useState({});
   const [selected, setSelected] = useState('NVDA');
   const [history, setHistory] = useState({});
@@ -30,7 +32,6 @@ export default function App() {
   const headerRef = useRef(null);
   const loadedOnce = useRef(false);
 
-  // בדיקה אם המשתמש מחובר
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
@@ -40,7 +41,6 @@ export default function App() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  // גלילה חלקה (Lenis)
   useEffect(() => {
     const lenis = new Lenis();
     let frame;
@@ -55,14 +55,12 @@ export default function App() {
     };
   }, []);
 
-  // כניסה של הכותרת (GSAP)
   useEffect(() => {
     if (headerRef.current) {
       gsap.from(headerRef.current, { opacity: 0, y: -12, duration: 0.6, ease: 'power2.out' });
     }
-  }, [session]);
+  }, [session, tab]);
 
-  // משיכת מחירים מהשרת
   useEffect(() => {
     let cancelled = false;
 
@@ -107,9 +105,8 @@ export default function App() {
     };
   }, []);
 
-  // יצירת הגרף פעם אחת
   useEffect(() => {
-    if (!chartRef.current) return;
+    if (!chartRef.current || tab !== 'market') return;
     const chart = createChart(chartRef.current, {
       width: chartRef.current.clientWidth,
       height: 360,
@@ -125,20 +122,20 @@ export default function App() {
     return () => {
       window.removeEventListener('resize', resize);
       chart.remove();
+      seriesRef.current = null;
     };
-  }, [session]);
+  }, [session, tab]);
 
   useEffect(() => {
     const data = history[selected] || [];
     seriesRef.current?.setData(data.map((p) => ({ time: p.time, value: p.value })));
-  }, [history, selected]);
+  }, [history, selected, tab]);
 
   useEffect(() => {
     const up = quotes[selected] ? quotes[selected].change >= 0 : true;
     seriesRef.current?.applyOptions({ color: up ? '#22c55e' : '#ef4444' });
-  }, [quotes, selected]);
+  }, [quotes, selected, tab]);
 
-  // אחרי כל ה-hooks: טעינה, או מסך כניסה אם אין משתמש
   if (checking) return null;
   if (!session) return <Auth />;
 
@@ -147,61 +144,92 @@ export default function App() {
 
   return (
     <div dir="rtl" className="page">
-      <header ref={headerRef} className="top">
-        <h1>סימולציית מסחר</h1>
-        <span className={open ? 'status open' : 'status closed'}>
-          {open ? 'השוק פתוח' : 'השוק סגור'}
-        </span>
-      </header>
+      <nav className="nav">
+        <button
+          className={tab === 'dashboard' ? 'navbtn active' : 'navbtn'}
+          onClick={() => setTab('dashboard')}
+        >
+          לוח בקרה
+        </button>
+        <button
+          className={tab === 'market' ? 'navbtn active' : 'navbtn'}
+          onClick={() => setTab('market')}
+        >
+          שוק
+        </button>
+        <button className="navbtn" onClick={() => supabase.auth.signOut()}>
+          יציאה
+        </button>
+      </nav>
 
-      <div className="tabs">
-        {SYMBOLS.map((s) => {
-          const x = quotes[s];
-          return (
-            <button
-              key={s}
-              className={selected === s ? 'tab active' : 'tab'}
-              onClick={() => setSelected(s)}
-            >
-              <span className="tab-name">
-                {NAMES[s]} <small>{s}</small>
-              </span>
-              {x && <strong>${x.price.toFixed(2)}</strong>}
-              {x && (
-                <em className={x.change >= 0 ? 'pos' : 'neg'}>
-                  {x.changePct.toFixed(2)}%
-                </em>
+      {tab === 'dashboard' && (
+        <>
+          <header className="top" ref={headerRef}>
+            <h1>לוח בקרה</h1>
+          </header>
+          <Dashboard quotes={quotes} userId={session.user.id} />
+        </>
+      )}
+
+      {tab === 'market' && (
+        <>
+          <header className="top" ref={headerRef}>
+            <h1>סימולציית מסחר</h1>
+            <span className={open ? 'status open' : 'status closed'}>
+              {open ? 'השוק פתוח' : 'השוק סגור'}
+            </span>
+          </header>
+
+          <div className="tabs">
+            {SYMBOLS.map((s) => {
+              const x = quotes[s];
+              return (
+                <button
+                  key={s}
+                  className={selected === s ? 'tab active' : 'tab'}
+                  onClick={() => setSelected(s)}
+                >
+                  <span className="tab-name">
+                    {NAMES[s]} <small>{s}</small>
+                  </span>
+                  {x && <strong>${x.price.toFixed(2)}</strong>}
+                  {x && (
+                    <em className={x.change >= 0 ? 'pos' : 'neg'}>
+                      {x.changePct.toFixed(2)}%
+                    </em>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {error && <p className="error">{error}</p>}
+
+          <section className="panel">
+            <div className="panel-head">
+              <h2>
+                {NAMES[selected]} ({selected})
+              </h2>
+              {q && (
+                <p className="price">
+                  ${q.price.toFixed(2)}
+                  <span className={q.change >= 0 ? 'pos' : 'neg'}>
+                    {' '}
+                    {q.change >= 0 ? '+' : ''}
+                    {q.change.toFixed(2)} ({q.changePct.toFixed(2)}%)
+                  </span>
+                </p>
               )}
-            </button>
-          );
-        })}
-      </div>
-
-      {error && <p className="error">{error}</p>}
-
-      <section className="panel">
-        <div className="panel-head">
-          <h2>
-            {NAMES[selected]} ({selected})
-          </h2>
-          {q && (
-            <p className="price">
-              ${q.price.toFixed(2)}
-              <span className={q.change >= 0 ? 'pos' : 'neg'}>
-                {' '}
-                {q.change >= 0 ? '+' : ''}
-                {q.change.toFixed(2)} ({q.changePct.toFixed(2)}%)
-              </span>
+            </div>
+            <div ref={chartRef} dir="ltr" className="chart" />
+            <p className="note">
+              הגרף מתעדכן כל 15 שניות, ומתחיל ברגע שפתחת את הדף. מחוץ לשעות המסחר של ארה"ב המחירים לא מתעדכנים.
             </p>
-          )}
-        </div>
-        <div ref={chartRef} dir="ltr" className="chart" />
-        <p className="note">
-          הגרף מתעדכן כל 15 שניות, ומתחיל ברגע שפתחת את הדף. מחוץ לשעות המסחר של ארה"ב המחירים לא מתעדכנים.
-        </p>
-      </section>
+          </section>
 
-      <RiskPanel symbol={selected} price={q?.price} />
+          <RiskPanel symbol={selected} price={q?.price} />
+        </>
+      )}
     </div>
   );
 }
