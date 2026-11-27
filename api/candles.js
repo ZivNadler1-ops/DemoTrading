@@ -1,5 +1,5 @@
-const TIMEFRAMES = new Set(['1Min', '5Min', '15Min', '1Hour', '1Day', '1Week', '1Month']);
-const MAX_DAYS = { '1Min': 5, '5Min': 30, '15Min': 60, '1Hour': 365, '1Day': 3650, '1Week': 3650, '1Month': 3650 };
+const TIMEFRAMES = new Set(['5Min', '15Min', '1Hour', '1Day', '1Week', '1Month']);
+const MAX_DAYS = { '5Min': 30, '15Min': 60, '1Hour': 365, '1Day': 3650, '1Week': 3650, '1Month': 3650 };
 const cache = new Map();
 const CACHE_MS = 60000;
 
