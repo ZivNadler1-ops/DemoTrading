@@ -1,6 +1,6 @@
 import { getUserFromRequest, isAdmin } from '../lib/auth.js';
 
-const ALLOWED = ['NVDA', 'AMD', 'AVGO', 'MU', 'INTC'];
+const STOCKS = ['NVDA', 'AMD', 'AVGO', 'MU', 'INTC'];
 const DAILY_LIMIT = 10;
 const MODEL = 'gemini-3.5-flash-lite';
 
@@ -81,6 +81,22 @@ async function saveMessage(row) {
   });
 }
 
+const STOCK_SYSTEM =
+  'אתה עוזר שמסביר מניות בעברית, בפשטות. ענה רק על בסיס המידע שנשלח לך. ' +
+  'אם המידע לא מספיק כדי לענות, כתוב זאת במפורש ואל תמציא סיבות. ' +
+  'ציין תאריכים ומקורות כשאפשר. אל תיתן המלצות קנייה או מכירה. ' +
+  'כתוב טקסט רגיל בלבד: בלי כוכביות, בלי Markdown, בלי כותרות ובלי קישורים. ' +
+  'להסברים עם כמה נקודות השתמש במספור פשוט (1. 2. 3.). ' +
+  'סיים בהערה קצרה שזה לא ייעוץ השקעות.';
+
+const GENERAL_SYSTEM =
+  'אתה עוזר ידידותי שעונה בעברית, בפשטות, על כל נושא שהמשתמש שואל. ' +
+  'כשמדובר בשוק ההון או במניות, הסבר מושגים ורעיונות בצורה כללית, ואל תמציא נתונים או חדשות עדכניים. ' +
+  'אם שואלים על מצב עדכני של מניה או שוק, ציין שאין לך נתונים עדכניים. ' +
+  'אל תיתן המלצות קנייה או מכירה. ' +
+  'כתוב טקסט רגיל בלבד: בלי כוכביות, בלי Markdown, בלי כותרות ובלי קישורים. ' +
+  'להסברים עם כמה נקודות השתמש במספור פשוט (1. 2. 3.).';
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'method not allowed' });
@@ -92,7 +108,8 @@ export default async function handler(req, res) {
   }
 
   const { symbol, question, price, changePct } = req.body || {};
-  if (!ALLOWED.includes(symbol)) {
+  const isGeneral = symbol === 'general';
+  if (!isGeneral && !STOCKS.includes(symbol)) {
     return res.status(400).json({ error: 'מניה לא נתמכת' });
   }
   if (typeof question !== 'string' || !question.trim() || question.length > 500) {
@@ -116,29 +133,25 @@ export default async function handler(req, res) {
 
   await saveMessage({ user_id: user.id, symbol, role: 'user', content: question.trim() });
 
-  const news = await getNews(symbol);
+  let system = GENERAL_SYSTEM;
+  let context = '';
 
-  const system =
-    'אתה עוזר שמסביר מניות בעברית, בפשטות. ענה רק על בסיס המידע שנשלח לך. ' +
-    'אם המידע לא מספיק כדי לענות, כתוב זאת במפורש ואל תמציא סיבות. ' +
-    'ציין תאריכים ומקורות כשאפשר. אל תיתן המלצות קנייה או מכירה. ' +
-    'כתוב טקסט רגיל בלבד: בלי כוכביות, בלי Markdown, בלי כותרות ובלי קישורים. ' +
-    'להסברים עם כמה נקודות השתמש במספור פשוט (1. 2. 3.). ' +
-    'סיים בהערה קצרה שזה לא ייעוץ השקעות.';
-
-  const newsText =
-    news.map((n) => `- ${n.date} | ${n.source}: ${n.headline}`).join('\n') ||
-    'לא נמצאו כותרות ב-30 הימים האחרונים';
-
-  const context =
-    `מניה: ${symbol}\n` +
-    `מחיר נוכחי: ${price ?? 'לא ידוע'}\n` +
-    `שינוי יומי: ${changePct ?? 'לא ידוע'}%\n\n` +
-    `כותרות חדשות מ-30 הימים האחרונים:\n${newsText}`;
+  if (!isGeneral) {
+    const news = await getNews(symbol);
+    const newsText =
+      news.map((n) => `- ${n.date} | ${n.source}: ${n.headline}`).join('\n') ||
+      'לא נמצאו כותרות ב-30 הימים האחרונים';
+    system = STOCK_SYSTEM;
+    context =
+      `מניה: ${symbol}\n` +
+      `מחיר נוכחי: ${price ?? 'לא ידוע'}\n` +
+      `שינוי יומי: ${changePct ?? 'לא ידוע'}%\n\n` +
+      `כותרות חדשות מ-30 הימים האחרונים:\n${newsText}\n\n`;
+  }
 
   const result = await callGemini({
     systemInstruction: { parts: [{ text: system }] },
-    contents: [{ role: 'user', parts: [{ text: `${context}\n\nשאלה: ${question}` }] }],
+    contents: [{ role: 'user', parts: [{ text: `${context}שאלה: ${question}` }] }],
   });
 
   if (!result.ok) {
