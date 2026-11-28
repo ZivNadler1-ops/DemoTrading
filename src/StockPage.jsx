@@ -14,9 +14,7 @@ const TF_OPTIONS = [
 ];
 
 const RANGES_BY_TF = {
-  '1Min': [
-    { value: 1, label: 'יום' },
-  ],
+  '1Min': [{ value: 1, label: 'יום' }],
   '5Min': [
     { value: 5, label: '5 ימים' },
     { value: 30, label: 'חודש' },
@@ -85,6 +83,7 @@ export default function StockPage({ symbol, quote, userId, onBack, onTraded }) {
   const chartRef = useRef(null);
   const chartObj = useRef(null);
   const seriesRef = useRef(null);
+  const liveRef = useRef(null);
   const [tf, setTf] = useState('1Day');
   const [days, setDays] = useState(365);
   const [type, setType] = useState('candle');
@@ -121,6 +120,7 @@ export default function StockPage({ symbol, quote, userId, onBack, onTraded }) {
   useEffect(() => {
     let cancelled = false;
     setBars([]);
+    liveRef.current = null;
     setLoading(true);
     fetch(`/api/candles?symbol=${symbol}&tf=${tf}&days=${days}`)
       .then((r) => r.json())
@@ -170,8 +170,44 @@ export default function StockPage({ symbol, quote, userId, onBack, onTraded }) {
     chartObj.current?.timeScale().fitContent();
   }, [bars, type]);
 
+  // מסגרת דקה: כל מחיר חדש מעדכן את הדקה הנוכחית, או פותח דקה חדשה
   useEffect(() => {
-    if (!seriesRef.current || !quote || bars.length === 0) return;
+    const s = seriesRef.current;
+    if (!s || !quote || tf !== '1Min' || bars.length === 0) return;
+
+    const minute = Math.floor(Date.now() / 60000) * 60;
+    const price = quote.price;
+    const prev = liveRef.current;
+    let cur;
+    if (prev && prev.time === minute) {
+      cur = {
+        ...prev,
+        high: Math.max(prev.high, price),
+        low: Math.min(prev.low, price),
+        close: price,
+      };
+    } else {
+      const open = prev ? prev.close : bars[bars.length - 1].c;
+      cur = {
+        time: minute,
+        open,
+        high: Math.max(open, price),
+        low: Math.min(open, price),
+        close: price,
+      };
+    }
+    liveRef.current = cur;
+
+    if (type === 'line' || type === 'area') {
+      s.update({ time: cur.time, value: cur.close });
+    } else {
+      s.update(cur);
+    }
+  }, [quote, tf, type, bars]);
+
+  // מסגרות אחרות: עדכון הנר האחרון לפי המחיר החי
+  useEffect(() => {
+    if (!seriesRef.current || !quote || tf === '1Min' || bars.length === 0) return;
     const last = bars[bars.length - 1];
     const price = quote.price;
     if (type === 'line' || type === 'area') {
@@ -185,7 +221,7 @@ export default function StockPage({ symbol, quote, userId, onBack, onTraded }) {
         close: price,
       });
     }
-  }, [quote, bars, type]);
+  }, [quote, bars, type, tf]);
 
   return (
     <div>
@@ -217,7 +253,7 @@ export default function StockPage({ symbol, quote, userId, onBack, onTraded }) {
       </div>
 
       <p className="note">
-        הנתונים מ-Alpaca מתעכבים ב-15 דקות (בתוכנית החינמית). המחיר האחרון מתעדכן כל 15 שניות בשעות המסחר.
+        הנתונים מ-Alpaca מתעכבים ב-15 דקות (בתוכנית החינמית). במסגרת דקה, המחיר החי מוסיף נקודה לדקה הנוכחית בשעות המסחר.
       </p>
 
       {tradeOpen && (
