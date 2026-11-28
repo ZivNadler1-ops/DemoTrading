@@ -649,4 +649,11 @@ body { overflow-x: hidden; }
 
 @media (max-width: 700px) {
   .chat-page { top: 120px !important; }
+}/* ===== תיקון גלילה ===== */
+.chat-page-log {
+  max-height: none !important;
+  height: auto !important;
+  flex: 1 1 0 !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
 }
