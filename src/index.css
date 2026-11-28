@@ -1198,3 +1198,28 @@ body:has(.chat-page) {
     font-size: 16px !important;
   }
 }
+/* ===== תיבת כתיבה: כפתור שליחה עגול בצד ימין, עם חץ ברור ===== */
+.chat-box {
+  flex-direction: row-reverse !important;
+  border-radius: 28px !important;
+  padding: 4px 4px 4px 16px !important;
+  min-height: 52px;
+}
+.chat-send {
+  width: 42px !important;
+  height: 42px !important;
+  min-width: 42px !important;
+  max-width: 42px !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1 / 1;
+}
+.chat-send svg {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px;
+  display: block;
+  flex: 0 0 auto;
+}
