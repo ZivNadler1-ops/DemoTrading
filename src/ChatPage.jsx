@@ -129,7 +129,7 @@ export default function ChatPage({ quotes }) {
 
   return (
     <div className="chat-page">
-      <aside className="chat-side">
+      <aside className="chat-side" data-lenis-prevent>
         <input
           className="chat-search"
           value={query}
@@ -163,7 +163,7 @@ export default function ChatPage({ quotes }) {
           <h2>{activeLabel}</h2>
         </div>
 
-        <div className="chat-log chat-page-log" ref={logRef}>
+        <div className="chat-log chat-page-log" ref={logRef} data-lenis-prevent>
           {visible.length === 0 && !busy && (
             <p className="chat-empty">עדיין אין שיחות כאן. כתוב שאלה למטה.</p>
           )}
