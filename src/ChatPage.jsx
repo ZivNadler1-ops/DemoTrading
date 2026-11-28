@@ -31,6 +31,25 @@ function PinIcon({ filled }) {
   );
 }
 
+function SendIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 19V5" />
+      <path d="M5 12l7-7 7 7" />
+    </svg>
+  );
+}
+
 export default function ChatPage({ quotes = {} }) {
   const [messages, setMessages] = useState([]);
   const [pins, setPins] = useState([]);
@@ -194,15 +213,17 @@ export default function ChatPage({ quotes = {} }) {
         </div>
 
         <form className="chat-form" onSubmit={ask}>
-          <button type="submit" disabled={busy}>
-            שלח
-          </button>
-          <input
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            placeholder="שאל כל שאלה..."
-            maxLength={500}
-          />
+          <div className="chat-box">
+            <input
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              placeholder="שאל כל שאלה..."
+              maxLength={500}
+            />
+            <button type="submit" className="chat-send" disabled={busy} aria-label="שלח">
+              <SendIcon />
+            </button>
+          </div>
         </form>
       </section>
     </div>

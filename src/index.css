@@ -1128,3 +1128,73 @@ body:has(.chat-page) {
   overflow: hidden;
   overscroll-behavior: none;
 }
+/* ===== תיבת הכתיבה: עגולה, עם כפתור שליחה עגול בפנים ===== */
+.chat-form {
+  padding: 10px 12px !important;
+  margin: 0 !important;
+}
+.chat-box {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #111827;
+  border: 1px solid #2b3648;
+  border-radius: 999px;
+  padding: 4px 4px 4px 14px;
+  min-width: 0;
+}
+.chat-box input {
+  flex: 1;
+  min-width: 0;
+  background: transparent !important;
+  border: none !important;
+  outline: none;
+  box-shadow: none !important;
+  color: #e5e7eb;
+  padding: 8px 4px !important;
+  height: auto !important;
+  border-radius: 0 !important;
+  font-size: 15px !important;
+}
+.chat-send {
+  flex: 0 0 auto;
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px;
+  border-radius: 50% !important;
+  border: none !important;
+  background: #3b82f6 !important;
+  color: #fff !important;
+  padding: 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.chat-send:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.chat-form > button:not(.chat-send) {
+  display: none !important;
+}
+
+/* ===== בלי רווח מתחת לצ'אט ===== */
+.chat-page {
+  bottom: 0 !important;
+  height: auto !important;
+}
+.page:has(.chat-page) {
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+}
+.chat-main.panel {
+  margin-bottom: 0 !important;
+}
+
+@media (max-width: 700px) {
+  .chat-box input {
+    font-size: 16px !important;
+  }
+}
