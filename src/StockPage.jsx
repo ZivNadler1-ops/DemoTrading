@@ -13,6 +13,8 @@ const TF_OPTIONS = [
   { value: '1Month', label: 'חודש' },
 ];
 
+const INTRADAY = ['1Min', '5Min', '15Min', '1Hour'];
+
 const RANGES_BY_TF = {
   '1Min': [{ value: 1, label: 'יום' }],
   '5Min': [
@@ -50,6 +52,48 @@ const TYPE_OPTIONS = [
   { value: 'area', label: 'שטח' },
 ];
 
+function fmtTime(seconds, intraday) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Jerusalem',
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date(seconds * 1000));
+  const get = (k) => parts.find((p) => p.type === k)?.value;
+  const date = `${get('day')}.${get('month')}`;
+  if (intraday) return `${date} ${get('hour')}:${get('minute')}`;
+  return `${date}.${get('year')}`;
+}
+
+function toData(bars, type) {
+  if (type === 'line' || type === 'area') {
+    return bars.map((b) => ({ time: b.time, value: b.c }));
+  }
+  return bars.map((b) => ({ time: b.time, open: b.o, high: b.h, low: b.l, close: b.c }));
+}
+
+function makeSeries(chart, type) {
+  const up = '#22c55e';
+  const down = '#ef4444';
+  if (type === 'candle') {
+    return chart.addSeries(CandlestickSeries, {
+      upColor: up, downColor: down, borderVisible: false, wickUpColor: up, wickDownColor: down,
+    });
+  }
+  if (type === 'bar') {
+    return chart.addSeries(BarSeries, { upColor: up, downColor: down });
+  }
+  if (type === 'line') {
+    return chart.addSeries(LineSeries, { color: up, lineWidth: 2 });
+  }
+  return chart.addSeries(AreaSeries, {
+    lineColor: up, topColor: 'rgba(34,197,94,0.25)', bottomColor: 'rgba(34,197,94,0)',
+  });
+}
+
 function Dropdown({ label, current, options, onChange }) {
   const [open, setOpen] = useState(false);
   const currentLabel = options.find((o) => o.value === current)?.label ?? '';
@@ -83,21 +127,14 @@ export default function StockPage({ symbol, quote, userId, onBack, onTraded }) {
   const chartRef = useRef(null);
   const chartObj = useRef(null);
   const seriesRef = useRef(null);
+  const lastBarRef = useRef(null);
   const liveRef = useRef(null);
-  const freshRef = useRef(true);
-  const loadingMoreRef = useRef(false);
-  const prevLenRef = useRef(0);
-  const stateRef = useRef({});
 
   const [tf, setTf] = useState('1Day');
   const [days, setDays] = useState(365);
   const [type, setType] = useState('candle');
   const [tradeOpen, setTradeOpen] = useState(false);
-  const [bars, setBars] = useState([]);
-  const [oldestReached, setOldestReached] = useState(false);
   const [loading, setLoading] = useState(false);
-
-  stateRef.current = { symbol, tf, days, bars, oldestReached };
 
   function changeTf(next) {
     setTf(next);
@@ -107,185 +144,135 @@ export default function StockPage({ symbol, quote, userId, onBack, onTraded }) {
     }
   }
 
-  // יצירת הגרף פעם אחת, וחיבור לאירוע גלילה לנתונים ישנים
+  // בנייה מחדש של הגרף בכל שינוי מניה, מסגרת, טווח או סוג
   useEffect(() => {
+    let cancelled = false;
+    let bars = [];
+    let oldestReached = false;
+    let loadingMore = false;
+    const intraday = INTRADAY.includes(tf);
+    liveRef.current = null;
+    lastBarRef.current = null;
+
     const chart = createChart(chartRef.current, {
       width: chartRef.current.clientWidth,
       height: 440,
       layout: { background: { color: '#0b0f14' }, textColor: '#8a94a6' },
       grid: { vertLines: { color: '#161c26' }, horzLines: { color: '#161c26' } },
       rightPriceScale: { borderColor: '#1f2733' },
+      localization: { timeFormatter: (t) => fmtTime(t, intraday) },
       timeScale: {
         borderColor: '#1f2733',
-        timeVisible: true,
+        timeVisible: intraday,
         secondsVisible: false,
         rightOffset: 2,
         fixRightEdge: true,
+        tickMarkFormatter: (t) => fmtTime(t, intraday),
       },
     });
+    const series = makeSeries(chart, type);
     chartObj.current = chart;
-
-    chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-      if (!range || freshRef.current) return;
-      if (range.from < 15) loadOlder();
-    });
+    seriesRef.current = series;
 
     const resize = () => chart.applyOptions({ width: chartRef.current.clientWidth });
     window.addEventListener('resize', resize);
-    return () => {
-      window.removeEventListener('resize', resize);
-      chart.remove();
-    };
-  }, []);
 
-  async function loadOlder() {
-    const s = stateRef.current;
-    if (loadingMoreRef.current || s.oldestReached || s.bars.length === 0) return;
-    loadingMoreRef.current = true;
-    try {
-      const oldest = s.bars[0].time;
-      const r = await fetch(
-        `/api/candles?symbol=${s.symbol}&tf=${s.tf}&days=${s.days}&before=${oldest}`
-      );
-      const data = await r.json();
-      if (!Array.isArray(data)) return;
-
-      const seen = new Set(s.bars.map((b) => b.time));
-      const fresh = data.filter((b) => !seen.has(b.time));
-      if (fresh.length === 0) {
-        setOldestReached(true);
-        return;
-      }
-      setBars((prev) => [...fresh, ...prev]);
-    } catch {
-      // שגיאה שקטה: המשתמש יוכל לנסות שוב בגלילה
-    } finally {
-      loadingMoreRef.current = false;
-    }
-  }
-
-  // טעינה ראשונית בכל שינוי מניה, מסגרת או טווח
-  useEffect(() => {
-    let cancelled = false;
-    freshRef.current = true;
-    prevLenRef.current = 0;
-    liveRef.current = null;
-    setBars([]);
-    setOldestReached(false);
     setLoading(true);
-
     fetch(`/api/candles?symbol=${symbol}&tf=${tf}&days=${days}`)
       .then((r) => r.json())
       .then((data) => {
-        if (!cancelled && Array.isArray(data)) setBars(data);
+        if (cancelled || !Array.isArray(data)) return;
+        bars = data;
+        series.setData(toData(bars, type));
+        chart.timeScale().fitContent();
+        lastBarRef.current = bars[bars.length - 1] || null;
       })
       .catch(() => {})
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
 
+    chart.timeScale().subscribeVisibleLogicalRangeChange(async (range) => {
+      if (cancelled || !range || bars.length === 0 || loadingMore || oldestReached) return;
+      if (range.from > 15) return;
+      loadingMore = true;
+      try {
+        const r = await fetch(
+          `/api/candles?symbol=${symbol}&tf=${tf}&days=${days}&before=${bars[0].time}`
+        );
+        const older = await r.json();
+        if (cancelled || !Array.isArray(older)) return;
+        const seen = new Set(bars.map((b) => b.time));
+        const fresh = older.filter((b) => !seen.has(b.time));
+        if (fresh.length === 0) {
+          oldestReached = true;
+          return;
+        }
+        const added = fresh.length;
+        bars = [...fresh, ...bars];
+        series.setData(toData(bars, type));
+        chart.timeScale().setVisibleLogicalRange({
+          from: range.from + added,
+          to: range.to + added,
+        });
+      } catch {
+        // שגיאה שקטה: אפשר לגלול שוב כדי לנסות
+      } finally {
+        loadingMore = false;
+      }
+    });
+
     return () => {
       cancelled = true;
+      window.removeEventListener('resize', resize);
+      chart.remove();
+      chartObj.current = null;
+      seriesRef.current = null;
     };
-  }, [symbol, tf, days]);
+  }, [symbol, tf, days, type]);
 
-  // יצירת סדרה מחדש כשמשנים סוג גרף
-  useEffect(() => {
-    const chart = chartObj.current;
-    if (!chart) return;
-    if (seriesRef.current) chart.removeSeries(seriesRef.current);
-
-    const up = '#22c55e';
-    const down = '#ef4444';
-    let series;
-    if (type === 'candle') {
-      series = chart.addSeries(CandlestickSeries, {
-        upColor: up, downColor: down, borderVisible: false, wickUpColor: up, wickDownColor: down,
-      });
-    } else if (type === 'bar') {
-      series = chart.addSeries(BarSeries, { upColor: up, downColor: down });
-    } else if (type === 'line') {
-      series = chart.addSeries(LineSeries, { color: up, lineWidth: 2 });
-    } else {
-      series = chart.addSeries(AreaSeries, {
-        lineColor: up, topColor: 'rgba(34,197,94,0.25)', bottomColor: 'rgba(34,197,94,0)',
-      });
-    }
-    seriesRef.current = series;
-    prevLenRef.current = 0;
-  }, [type]);
-
-  // הצגת הנתונים: בטעינה ראשונה מתאימים לכל הטווח, בטעינה של נתונים ישנים שומרים על המיקום
-  useEffect(() => {
-    const chart = chartObj.current;
-    if (!seriesRef.current || bars.length === 0 || !chart) return;
-
-    const data =
-      type === 'line' || type === 'area'
-        ? bars.map((b) => ({ time: b.time, value: b.c }))
-        : bars.map((b) => ({ time: b.time, open: b.o, high: b.h, low: b.l, close: b.c }));
-
-    const added = bars.length - prevLenRef.current;
-    const keepRange = !freshRef.current && added > 0 ? chart.timeScale().getVisibleLogicalRange() : null;
-
-    seriesRef.current.setData(data);
-
-    if (freshRef.current) {
-      chart.timeScale().fitContent();
-      freshRef.current = false;
-    } else if (keepRange) {
-      chart.timeScale().setVisibleLogicalRange({
-        from: keepRange.from + added,
-        to: keepRange.to + added,
-      });
-    }
-    prevLenRef.current = bars.length;
-  }, [bars, type]);
-
-  // עדכון הנר האחרון במסגרת דקה לפי המחיר החי
+  // עדכון הנר האחרון לפי המחיר החי
   useEffect(() => {
     const s = seriesRef.current;
-    if (!s || !quote || tf !== '1Min' || bars.length === 0) return;
-
-    const minute = Math.floor(Date.now() / 60000) * 60;
+    const last = lastBarRef.current;
+    if (!s || !quote || !last) return;
     const price = quote.price;
-    const prev = liveRef.current;
-    let cur;
-    if (prev && prev.time === minute) {
-      cur = {
-        ...prev,
-        high: Math.max(prev.high, price),
-        low: Math.min(prev.low, price),
-        close: price,
-      };
-    } else {
-      const open = prev ? prev.close : bars[bars.length - 1].c;
-      cur = {
-        time: minute,
-        open,
-        high: Math.max(open, price),
-        low: Math.min(open, price),
-        close: price,
-      };
-    }
-    liveRef.current = cur;
+    const isLine = type === 'line' || type === 'area';
 
-    if (type === 'line' || type === 'area') {
-      s.update({ time: cur.time, value: cur.close });
-    } else {
-      s.update(cur);
+    if (tf === '1Min') {
+      const minute = Math.floor(Date.now() / 60000) * 60;
+      const prev = liveRef.current;
+      let cur;
+      if (prev && prev.time === minute) {
+        cur = {
+          ...prev,
+          high: Math.max(prev.high, price),
+          low: Math.min(prev.low, price),
+          close: price,
+        };
+      } else {
+        const open = prev ? prev.close : last.c;
+        cur = {
+          time: minute,
+          open,
+          high: Math.max(open, price),
+          low: Math.min(open, price),
+          close: price,
+        };
+      }
+      liveRef.current = cur;
+      if (isLine) {
+        s.update({ time: cur.time, value: cur.close });
+      } else {
+        s.update(cur);
+      }
+      return;
     }
-  }, [quote, tf, type, bars]);
 
-  // מסגרות אחרות: עדכון הנר האחרון לפי המחיר החי
-  useEffect(() => {
-    if (!seriesRef.current || !quote || tf === '1Min' || bars.length === 0) return;
-    const last = bars[bars.length - 1];
-    const price = quote.price;
-    if (type === 'line' || type === 'area') {
-      seriesRef.current.update({ time: last.time, value: price });
+    if (isLine) {
+      s.update({ time: last.time, value: price });
     } else {
-      seriesRef.current.update({
+      s.update({
         time: last.time,
         open: last.o,
         high: Math.max(last.h, price),
@@ -293,7 +280,7 @@ export default function StockPage({ symbol, quote, userId, onBack, onTraded }) {
         close: price,
       });
     }
-  }, [quote, bars, type, tf]);
+  }, [quote, tf, type, symbol, days]);
 
   return (
     <div>
