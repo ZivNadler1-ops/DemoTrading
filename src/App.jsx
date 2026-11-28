@@ -52,10 +52,13 @@ export default function App() {
     };
   }, []);
 
-  // מסתיר את התפריט העליון בגלילה למטה, ומציג אותו בגלילה למעלה או בראש הדף.
-  // תופס גם את הגלילה של דף הכללי/ההודעות בצ'אט
+  // הסתרה והצגה של התפריט העליון:
+  // - גלילה למטה: מסתיר. גלילה למעלה או משיכה למטה מראש הרשימה: מציג
   useEffect(() => {
     const last = { win: 0, log: 0 };
+    let touchY = null;
+
+    const isLog = (t) => !!(t && t.classList && t.classList.contains('chat-page-log'));
 
     function onScroll(e) {
       const t = e.target;
@@ -64,7 +67,7 @@ export default function App() {
       if (t === document) {
         y = window.scrollY;
         key = 'win';
-      } else if (t.classList && t.classList.contains('chat-page-log')) {
+      } else if (isLog(t)) {
         y = t.scrollTop;
         key = 'log';
       } else {
@@ -77,8 +80,33 @@ export default function App() {
       last[key] = y;
     }
 
-    window.addEventListener('scroll', onScroll, { capture: true, passive: true });
-    return () => window.removeEventListener('scroll', onScroll, { capture: true });
+    function onTouchStart(e) {
+      touchY = e.touches[0].clientY;
+    }
+
+    function onTouchMove(e) {
+      if (!isLog(e.target) || touchY === null) return;
+      const y = e.touches[0].clientY;
+      const dy = y - touchY;
+      touchY = y;
+      if (e.target.scrollTop <= 0 && dy > 2) setNavHidden(false);
+    }
+
+    function onWheel(e) {
+      if (isLog(e.target) && e.target.scrollTop <= 0 && e.deltaY < 0) setNavHidden(false);
+    }
+
+    const opts = { capture: true, passive: true };
+    window.addEventListener('scroll', onScroll, opts);
+    window.addEventListener('touchstart', onTouchStart, opts);
+    window.addEventListener('touchmove', onTouchMove, opts);
+    window.addEventListener('wheel', onWheel, opts);
+    return () => {
+      window.removeEventListener('scroll', onScroll, opts);
+      window.removeEventListener('touchstart', onTouchStart, opts);
+      window.removeEventListener('touchmove', onTouchMove, opts);
+      window.removeEventListener('wheel', onWheel, opts);
+    };
   }, []);
 
   // מושך מחירים: תמיד פעם אחת בטעינה, ובשעות המסחר כל 15 שניות

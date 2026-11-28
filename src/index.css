@@ -1118,3 +1118,13 @@ body { overflow-x: hidden; }
     flex: 0 0 auto;
   }
 }
+/* ===== מניעת "קפיצה" של הדף בסוף הצ'אט ===== */
+.chat-page-log,
+.chat-side {
+  overscroll-behavior: contain !important;
+}
+html:has(.chat-page),
+body:has(.chat-page) {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
