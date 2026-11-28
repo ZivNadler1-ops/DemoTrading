@@ -515,3 +515,37 @@ body {
 .pin-toggle.pinned { opacity: 1; }
 .pin-toggle.pinned { color: #60a5fa; }
 .pin-toggle:hover { color: #ffffff; background: #2a3442; }
+/* ===== תיקון סופי: תפריט על כל הרוחב, גלילה, קלט למטה ===== */
+body { overflow-x: hidden; }
+
+.nav {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  box-sizing: border-box;
+  padding: 12px 16px;
+  justify-content: flex-start;
+}
+.nav .navbtn:last-child {
+  order: 0;
+  margin-left: auto;
+}
+
+.chat-side {
+  scrollbar-width: none;
+}
+.chat-side::-webkit-scrollbar { display: none; }
+
+.chat-log {
+  scrollbar-width: none;
+}
+.chat-log::-webkit-scrollbar { display: none; }
+
+.chat-page-log {
+  flex: none;
+  height: calc(100vh - 250px);
+  min-height: 200px;
+}
+
+@media (max-width: 700px) {
+  .chat-page-log { height: calc(100vh - 330px); }
+}

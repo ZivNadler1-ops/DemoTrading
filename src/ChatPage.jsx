@@ -102,15 +102,16 @@ export default function ChatPage({ quotes }) {
     }
   }
 
-  function renderRow(c) {
+  // inPinned: בתוך רשימת המוצמדים אין סיכה. הסיכה נמצאת רק ברשימת המניות למטה
+  function renderRow(c, inPinned) {
     const isGen = c.key === 'general';
     const pinned = pins.includes(c.key);
     return (
-      <div key={c.key} className={c.key === active ? 'chat-row on' : 'chat-row'}>
+      <div key={`${inPinned ? 'p' : 's'}-${c.key}`} className={c.key === active ? 'chat-row on' : 'chat-row'}>
         <button className="chat-item" onClick={() => setActive(c.key)}>
           {c.label}
         </button>
-        {!isGen && (
+        {!isGen && !inPinned && (
           <button
             className={pinned ? 'pin-toggle pinned' : 'pin-toggle'}
             title={pinned ? 'בטל הצמדה' : 'הצמד'}
@@ -139,7 +140,7 @@ export default function ChatPage({ quotes }) {
         {pinnedList.length > 0 && (
           <div className="chat-section">
             <div className="chat-side-title">Pinned</div>
-            {pinnedList.map(renderRow)}
+            {pinnedList.map((c) => renderRow(c, true))}
           </div>
         )}
 
@@ -148,7 +149,7 @@ export default function ChatPage({ quotes }) {
         {stockList.length > 0 && (
           <div className="chat-section">
             <div className="chat-side-title">Stocks</div>
-            {stockList.map(renderRow)}
+            {stockList.map((c) => renderRow(c, false))}
           </div>
         )}
 
