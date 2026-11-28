@@ -657,3 +657,78 @@ body { overflow-x: hidden; }
   overflow-y: auto !important;
   -webkit-overflow-scrolling: touch;
 }
+/* ===== התאמה לטלפון (רק מסכים צרים מ-700px) ===== */
+@media (max-width: 700px) {
+  html, body {
+    overflow-x: hidden;
+  }
+
+  .page {
+    padding: 12px 16px !important;
+  }
+
+  /* סרגל ניווט: מתחלק לשורה אחת שנכנסת למסך */
+  .nav {
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: space-between !important;
+    padding: 8px 10px !important;
+  }
+  .nav .navbtn {
+    padding: 6px 10px !important;
+    font-size: 14px !important;
+  }
+  .nav .navbtn:last-child {
+    margin-left: 0 !important;
+  }
+
+  /* כל הגרידים שבאתר נערמים בעמודה אחת */
+  .grid,
+  .cards,
+  .stock-grid,
+  .stats,
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* גרפים ותמונות לא יוצאים מהמסך */
+  canvas,
+  img,
+  svg {
+    max-width: 100%;
+  }
+
+  /* טבלאות: גלילה אופקית בתוך הכרטיס, לא בכל הדף */
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    font-size: 13px;
+  }
+
+  h1 { font-size: 22px !important; }
+  h2 { font-size: 18px !important; }
+
+  /* דף הצ'אט: הרשימה למעלה בשורה נגללת, ההודעות והקלט מתחת */
+  .chat-page {
+    top: 60px !important;
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto 1fr !important;
+  }
+  .chat-side {
+    max-height: 38vh !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-bottom: 1px solid #1f2937 !important;
+  }
+  .chat-main.panel {
+    height: auto !important;
+    min-height: 0 !important;
+  }
+  .chat-page-log {
+    min-height: 0 !important;
+  }
+  .chat-form input {
+    font-size: 16px; /* מונע זום אוטומטי בטלפון כשלוחצים על השדה */
+  }
+}
