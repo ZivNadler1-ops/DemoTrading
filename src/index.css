@@ -731,4 +731,86 @@ body { overflow-x: hidden; }
   .chat-form input {
     font-size: 16px; /* מונע זום אוטומטי בטלפון כשלוחצים על השדה */
   }
+}/* ===== צ'אט בטלפון: רשימה נגללת למעלה, הצ'אט תופס את כל השאר ===== */
+@media (max-width: 700px) {
+  .chat-page {
+    top: 60px !important;
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
+  }
+
+  .chat-side {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 6px !important;
+    max-height: none !important;
+    height: auto !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding: 8px 10px !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-top: none !important;
+    border-bottom: 1px solid #1f2937 !important;
+    scrollbar-width: none;
+  }
+  .chat-side::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* כל קטע (כללי, מוצמדות, מניות) נפתח לשורה אחת */
+  .chat-side > div {
+    display: contents !important;
+  }
+
+  .chat-side .chat-divider {
+    display: none !important;
+  }
+
+  .chat-search {
+    flex: 0 0 130px !important;
+    width: 130px !important;
+    font-size: 14px !important;
+    padding: 7px 10px !important;
+  }
+
+  .chat-side .chat-item {
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
+    border-radius: 999px !important;
+    padding: 6px 12px !important;
+    font-size: 14px !important;
+  }
+
+  .chat-side .pin-toggle {
+    display: none !important;
+  }
+
+  .chat-main.panel {
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 10px !important;
+  }
+
+  .chat-head h2 {
+    font-size: 17px !important;
+  }
+
+  .chat-page-log {
+    min-height: 0 !important;
+  }
+
+  .chat-page-log > * {
+    max-width: 88% !important;
+  }
+
+  .chat-form {
+    gap: 6px !important;
+  }
+  .chat-form input {
+    font-size: 16px !important;
+    min-width: 0 !important;
+  }
 }
