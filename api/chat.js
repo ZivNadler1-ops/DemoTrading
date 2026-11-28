@@ -2,7 +2,7 @@ import { getUserFromRequest, isAdmin } from '../lib/auth.js';
 
 const ALLOWED = ['NVDA', 'AMD', 'AVGO', 'MU', 'INTC'];
 const DAILY_LIMIT = 10;
-const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const MODEL = 'gemini-3.6-flash';
 
 function sbHeaders() {
   return {
