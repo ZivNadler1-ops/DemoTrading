@@ -548,4 +548,63 @@ body { overflow-x: hidden; }
 
 @media (max-width: 700px) {
   .chat-page-log { height: calc(100vh - 330px); }
+}/* ===== תיקון סופי v2 ===== */
+body { overflow-x: hidden; }
+
+/* תפריט עליון קבוע: טאבים מימין, יציאה משמאל */
+.nav {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-start;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 12px 16px;
+  background: #070a0f;
+  border-bottom: 1px solid #1f2733;
+}
+.nav .navbtn:last-child {
+  order: 0;
+  margin-left: auto !important;
+}
+.page { padding-top: 76px !important; }
+
+/* דף הצ'אט: מלא מתחת לתפריט עד תחתית המסך */
+.chat-page {
+  position: fixed !important;
+  top: 72px !important;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  grid-template-rows: 100% !important;
+}
+
+.chat-main.panel {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+}
+
+/* אזור ההודעות: גובה קבוע, והגלילה בגלגלת */
+.chat-page-log {
+  flex: none !important;
+  height: calc(100vh - 250px) !important;
+  overflow-y: auto !important;
+  scrollbar-width: none;
+}
+.chat-page-log::-webkit-scrollbar { display: none; }
+
+/* הקלט בתחתית */
+.chat-main .chat-form {
+  flex: none;
+  margin-top: auto;
+}
+
+@media (max-width: 700px) {
+  .chat-page { top: 120px !important; }
+  .chat-page-log { height: calc(100vh - 330px) !important; }
 }
