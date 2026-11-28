@@ -4,6 +4,7 @@ import Auth from './Auth';
 import Dashboard from './Dashboard';
 import Market, { isMarketOpen } from './Market';
 import StockPage from './StockPage';
+import ChatPage from './ChatPage';
 import { supabase } from './lib/supabase';
 import './index.css';
 
@@ -100,6 +101,9 @@ export default function App() {
         <button className={marketActive ? 'navbtn active' : 'navbtn'} onClick={() => setTab('market')}>
           שוק
         </button>
+        <button className={tab === 'chat' ? 'navbtn active' : 'navbtn'} onClick={() => setTab('chat')}>
+          צ'אט
+        </button>
         <button className="navbtn" onClick={() => supabase.auth.signOut()}>
           יציאה
         </button>
@@ -122,6 +126,8 @@ export default function App() {
           onTraded={() => setRefreshKey((k) => k + 1)}
         />
       )}
+
+      {tab === 'chat' && <ChatPage quotes={quotes} />}
     </div>
   );
 }
