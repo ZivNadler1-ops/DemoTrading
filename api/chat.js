@@ -2,7 +2,7 @@ import { getUserFromRequest, isAdmin } from '../lib/auth.js';
 
 const ALLOWED = ['NVDA', 'AMD', 'AVGO', 'MU', 'INTC'];
 const DAILY_LIMIT = 10;
-const MODEL = 'gemini-3.6-flash';
+const MODEL = 'gemini-3.8-flash';
 
 function sbHeaders() {
   return {
@@ -14,6 +14,34 @@ function sbHeaders() {
 
 function isoDay(date) {
   return date.toISOString().slice(0, 10);
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function callGemini(body) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+  const delays = [0, 1000, 2000];
+  let last = null;
+
+  for (const delay of delays) {
+    if (delay) await sleep(delay);
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': process.env.GEMINI_API_KEY,
+      },
+      body: JSON.stringify(body),
+    });
+    if (r.ok) return { ok: true, data: await r.json() };
+    last = { status: r.status, text: await r.text() };
+    if (r.status !== 503) break;
+  }
+
+  console.error('Gemini error', last?.status, last?.text);
+  return { ok: false };
 }
 
 async function getNews(symbol) {
@@ -85,27 +113,16 @@ export default async function handler(req, res) {
     `שינוי יומי: ${changePct ?? 'לא ידוע'}%\n\n` +
     `כותרות חדשות מ-30 הימים האחרונים:\n${newsText}`;
 
-  const gr = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': process.env.GEMINI_API_KEY,
-      },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: system }] },
-        contents: [{ role: 'user', parts: [{ text: `${context}\n\nשאלה: ${question}` }] }],
-      }),
-    }
-  );
+  const result = await callGemini({
+    systemInstruction: { parts: [{ text: system }] },
+    contents: [{ role: 'user', parts: [{ text: `${context}\n\nשאלה: ${question}` }] }],
+  });
 
-  if (!gr.ok) {
-    console.error('Gemini error', gr.status, await gr.text());
-    return res.status(502).json({ error: 'הבוט לא זמין כרגע, נסה שוב מאוחר יותר' });
+  if (!result.ok) {
+    return res.status(502).json({ error: 'הבוט עמוס כרגע, נסה שוב בעוד כמה דקות' });
   }
 
-  const data = await gr.json();
+  const data = result.data;
   const answer =
     data.candidates?.[0]?.content?.parts?.map((p) => p.text).join('') || 'לא התקבלה תשובה';
 
