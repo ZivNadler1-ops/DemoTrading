@@ -52,33 +52,21 @@ export default function App() {
     };
   }, []);
 
-  // הסתרה והצגה של התפריט העליון:
-  // - גלילה למטה: מסתיר. גלילה למעלה או משיכה למטה מראש הרשימה: מציג
+  // הסתרה והצגה של התפריט העליון, בלי תלות באירועי גלילה שמשנים את הפריסה
   useEffect(() => {
-    const last = { win: 0, log: 0 };
-    let touchY = null;
-
-    const isLog = (t) => !!(t && t.classList && t.classList.contains('chat-page-log'));
-
-    function onScroll(e) {
-      const t = e.target;
-      let y;
-      let key;
-      if (t === document) {
-        y = window.scrollY;
-        key = 'win';
-      } else if (isLog(t)) {
-        y = t.scrollTop;
-        key = 'log';
-      } else {
-        return;
-      }
-      const prev = last[key];
+    // דפים רגילים (לוח בקרה, שוק, מניה): לפי גלילה של הדף
+    let lastY = window.scrollY;
+    function onWindowScroll() {
+      const y = window.scrollY;
       if (y < 40) setNavHidden(false);
-      else if (y > prev + 5) setNavHidden(true);
-      else if (y < prev - 5) setNavHidden(false);
-      last[key] = y;
+      else if (y > lastY + 6) setNavHidden(true);
+      else if (y < lastY - 6) setNavHidden(false);
+      lastY = y;
     }
+
+    // צ'אט: לפי תנועת אצבע או גלגלת בתוך רשימת ההודעות
+    const isLog = (t) => !!(t && t.classList && t.classList.contains('chat-page-log'));
+    let touchY = null;
 
     function onTouchStart(e) {
       touchY = e.touches[0].clientY;
@@ -89,23 +77,25 @@ export default function App() {
       const y = e.touches[0].clientY;
       const dy = y - touchY;
       touchY = y;
-      if (e.target.scrollTop <= 0 && dy > 2) setNavHidden(false);
+      if (dy < -6) setNavHidden(true);
+      else if (dy > 6 && e.target.scrollTop <= 0) setNavHidden(false);
     }
 
     function onWheel(e) {
-      if (isLog(e.target) && e.target.scrollTop <= 0 && e.deltaY < 0) setNavHidden(false);
+      if (!isLog(e.target)) return;
+      if (e.deltaY > 6) setNavHidden(true);
+      else if (e.deltaY < -6 && e.target.scrollTop <= 0) setNavHidden(false);
     }
 
-    const opts = { capture: true, passive: true };
-    window.addEventListener('scroll', onScroll, opts);
-    window.addEventListener('touchstart', onTouchStart, opts);
-    window.addEventListener('touchmove', onTouchMove, opts);
-    window.addEventListener('wheel', onWheel, opts);
+    window.addEventListener('scroll', onWindowScroll, { passive: true });
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchmove', onTouchMove, { passive: true });
+    window.addEventListener('wheel', onWheel, { passive: true });
     return () => {
-      window.removeEventListener('scroll', onScroll, opts);
-      window.removeEventListener('touchstart', onTouchStart, opts);
-      window.removeEventListener('touchmove', onTouchMove, opts);
-      window.removeEventListener('wheel', onWheel, opts);
+      window.removeEventListener('scroll', onWindowScroll);
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('wheel', onWheel);
     };
   }, []);
 

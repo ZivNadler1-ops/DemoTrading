@@ -1243,3 +1243,34 @@ body:has(.chat-page) {
     stroke-width: 3 !important;
   }
 }
+/* ===== יציבות הצ'אט: בלי קפיצות של הרשימה בזמן הגלילה ===== */
+.chat-page-log {
+  overflow-anchor: none !important;
+}
+
+/* ===== תיבת הכתיבה: מרווחים שווים, כפתור עגול וחץ ברור ===== */
+.chat-box {
+  padding: 6px !important;
+  min-height: 52px;
+  border-radius: 30px !important;
+}
+.chat-send {
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  max-width: 40px !important;
+  border-radius: 50% !important;
+}
+.chat-send svg {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px;
+  stroke-width: 2.8 !important;
+}
+
+@media (max-width: 700px) {
+  .chat-box input {
+    padding: 0 12px !important;
+    font-size: 16px !important;
+  }
+}
