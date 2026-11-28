@@ -21,7 +21,8 @@ export default async function handler(req, res) {
 
   const latestEnd = Date.now() - 16 * 60 * 1000;
   const endMs = before ? Math.min(before * 1000, latestEnd) : latestEnd;
-  const startMs = endMs - windowDays * 86400000;
+  const span = before ? Math.min(Math.max(windowDays, 10), MAX_DAYS[tf]) : windowDays;
+  const startMs = endMs - span * 86400000;
 
   const cacheKey = `${symbol}:${tf}:${windowDays}:${before || 'now'}`;
   const hit = cache.get(cacheKey);

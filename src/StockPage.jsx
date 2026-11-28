@@ -157,6 +157,8 @@ export default function StockPage({ symbol, quote, userId, onBack, onTraded }) {
     const chart = createChart(chartRef.current, {
       width: chartRef.current.clientWidth,
       height: 440,
+      handleScroll: false,
+      handleScale: false,
       layout: { background: { color: '#0b0f14' }, textColor: '#8a94a6' },
       grid: { vertLines: { color: '#161c26' }, horzLines: { color: '#161c26' } },
       rightPriceScale: { borderColor: '#1f2733' },
@@ -312,7 +314,7 @@ export default function StockPage({ symbol, quote, userId, onBack, onTraded }) {
       </div>
 
       <p className="note">
-        הנתונים מ-Alpaca מתעכבים ב-15 דקות (בתוכנית החינמית). גלול שמאלה כדי לטעון היסטוריה ישנה יותר.
+        הנתונים מ-Alpaca מתעכבים ב-15 דקות (בתוכנית החינמית). המחיר האחרון מתעדכן כל 15 שניות בשעות המסחר.
       </p>
 
       {tradeOpen && (
