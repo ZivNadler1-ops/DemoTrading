@@ -607,4 +607,46 @@ body { overflow-x: hidden; }
 @media (max-width: 700px) {
   .chat-page { top: 120px !important; }
   .chat-page-log { height: calc(100vh - 330px) !important; }
+}/* ===== תיקון v3 ===== */
+.nav {
+  justify-content: flex-start !important;
+}
+.nav .navbtn:last-child {
+  margin-left: auto !important;
+  margin-right: 0 !important;
+}
+
+.chat-main.panel {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  padding: 18px 24px !important;
+}
+
+.chat-head {
+  flex: none !important;
+}
+
+.chat-page-log {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  overflow-y: auto !important;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto 14px !important;
+}
+
+.chat-main .chat-form {
+  flex: none !important;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto !important;
+}
+
+@media (max-width: 700px) {
+  .chat-page { top: 120px !important; }
 }
