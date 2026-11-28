@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createChart, CandlestickSeries, BarSeries, LineSeries, AreaSeries } from 'lightweight-charts';
 import TradePanel from './TradePanel';
 import { NAMES } from './Market';
+import StockChat from './StockChat';
 
 const TF_OPTIONS = [
   { value: '1Min', label: 'דקה' },
@@ -316,6 +317,8 @@ export default function StockPage({ symbol, quote, userId, onBack, onTraded }) {
       <p className="note">
         הנתונים מ-Alpaca מתעכבים ב-15 דקות (בתוכנית החינמית). המחיר האחרון מתעדכן כל 15 שניות בשעות המסחר.
       </p>
+
+      <StockChat key={symbol} symbol={symbol} quote={quote} />
 
       {tradeOpen && (
         <TradePanel
