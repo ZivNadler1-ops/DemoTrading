@@ -18,6 +18,7 @@ export default function App() {
   const [quotes, setQuotes] = useState({});
   const [error, setError] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
+  const [navHidden, setNavHidden] = useState(false);
   const loadedOnce = useRef(false);
 
   useEffect(() => {
@@ -49,6 +50,35 @@ export default function App() {
       cancelAnimationFrame(frame);
       lenis.destroy();
     };
+  }, []);
+
+  // מסתיר את התפריט העליון בגלילה למטה, ומציג אותו בגלילה למעלה או בראש הדף.
+  // תופס גם את הגלילה של דף הכללי/ההודעות בצ'אט
+  useEffect(() => {
+    const last = { win: 0, log: 0 };
+
+    function onScroll(e) {
+      const t = e.target;
+      let y;
+      let key;
+      if (t === document) {
+        y = window.scrollY;
+        key = 'win';
+      } else if (t.classList && t.classList.contains('chat-page-log')) {
+        y = t.scrollTop;
+        key = 'log';
+      } else {
+        return;
+      }
+      const prev = last[key];
+      if (y < 40) setNavHidden(false);
+      else if (y > prev + 5) setNavHidden(true);
+      else if (y < prev - 5) setNavHidden(false);
+      last[key] = y;
+    }
+
+    window.addEventListener('scroll', onScroll, { capture: true, passive: true });
+    return () => window.removeEventListener('scroll', onScroll, { capture: true });
   }, []);
 
   // מושך מחירים: תמיד פעם אחת בטעינה, ובשעות המסחר כל 15 שניות
@@ -94,7 +124,7 @@ export default function App() {
 
   return (
     <div dir="rtl" className="page">
-      <nav className="nav">
+      <nav className={'nav' + (navHidden ? ' nav-hidden' : '')}>
         <button className={tab === 'dashboard' ? 'navbtn active' : 'navbtn'} onClick={() => setTab('dashboard')}>
           לוח בקרה
         </button>

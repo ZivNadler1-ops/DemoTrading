@@ -140,7 +140,7 @@ export default function ChatPage({ quotes = {} }) {
   }
 
   return (
-    <div className="chat-page">
+    <div className={'chat-page' + (menuOpen ? ' menu-open' : '')}>
       <aside className={'chat-side' + (menuOpen ? ' open' : '')} data-lenis-prevent>
         <div className="chat-side-top">
           <input
