@@ -2,7 +2,7 @@ import { getUserFromRequest, isAdmin } from '../lib/auth.js';
 
 const STOCKS = ['NVDA', 'AMD', 'AVGO', 'MU', 'INTC'];
 const DAILY_LIMIT = 10;
-const MODEL = 'gemini-3.5-flash-lite';
+const MODEL = 'gemini-3.6-flash';
 
 function sbHeaders() {
   return {
