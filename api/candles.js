@@ -14,21 +14,24 @@ export default async function handler(req, res) {
   if (!symbol) {
     return res.status(400).json({ error: 'symbol is required' });
   }
-  const tf = TIMEFRAMES.has(req.query.tf) ? req.query.tf : '1Day';
-  const requested = parseInt(req.query.days, 10) || 365;
-  const days = Math.min(Math.max(requested, 1), MAX_DAYS[tf]);
 
-  const cacheKey = `${symbol}:${tf}:${days}`;
+  const tf = TIMEFRAMES.has(req.query.tf) ? req.query.tf : '1Day';
+  const windowDays = Math.min(Math.max(parseInt(req.query.days, 10) || 365, 1), MAX_DAYS[tf]);
+  const before = parseInt(req.query.before, 10);
+
+  const latestEnd = Date.now() - 16 * 60 * 1000;
+  const endMs = before ? Math.min(before * 1000, latestEnd) : latestEnd;
+  const startMs = endMs - windowDays * 86400000;
+
+  const cacheKey = `${symbol}:${tf}:${windowDays}:${before || 'now'}`;
   const hit = cache.get(cacheKey);
   if (hit && Date.now() - hit.time < CACHE_MS) {
     return res.status(200).json(hit.data);
   }
 
-  const end = new Date(Date.now() - 16 * 60 * 1000);
-  const start = new Date(Date.now() - days * 86400000);
   const url =
     `https://data.alpaca.markets/v2/stocks/${symbol}/bars` +
-    `?timeframe=${tf}&start=${start.toISOString()}&end=${end.toISOString()}` +
+    `?timeframe=${tf}&start=${new Date(startMs).toISOString()}&end=${new Date(endMs).toISOString()}` +
     `&limit=10000&feed=iex&adjustment=split`;
 
   try {

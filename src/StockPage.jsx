@@ -84,12 +84,20 @@ export default function StockPage({ symbol, quote, userId, onBack, onTraded }) {
   const chartObj = useRef(null);
   const seriesRef = useRef(null);
   const liveRef = useRef(null);
+  const freshRef = useRef(true);
+  const loadingMoreRef = useRef(false);
+  const prevLenRef = useRef(0);
+  const stateRef = useRef({});
+
   const [tf, setTf] = useState('1Day');
   const [days, setDays] = useState(365);
   const [type, setType] = useState('candle');
   const [tradeOpen, setTradeOpen] = useState(false);
   const [bars, setBars] = useState([]);
+  const [oldestReached, setOldestReached] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  stateRef.current = { symbol, tf, days, bars, oldestReached };
 
   function changeTf(next) {
     setTf(next);
@@ -99,6 +107,7 @@ export default function StockPage({ symbol, quote, userId, onBack, onTraded }) {
     }
   }
 
+  // יצירת הגרף פעם אחת, וחיבור לאירוע גלילה לנתונים ישנים
   useEffect(() => {
     const chart = createChart(chartRef.current, {
       width: chartRef.current.clientWidth,
@@ -115,6 +124,12 @@ export default function StockPage({ symbol, quote, userId, onBack, onTraded }) {
       },
     });
     chartObj.current = chart;
+
+    chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+      if (!range || freshRef.current) return;
+      if (range.from < 15) loadOlder();
+    });
+
     const resize = () => chart.applyOptions({ width: chartRef.current.clientWidth });
     window.addEventListener('resize', resize);
     return () => {
@@ -123,11 +138,42 @@ export default function StockPage({ symbol, quote, userId, onBack, onTraded }) {
     };
   }, []);
 
+  async function loadOlder() {
+    const s = stateRef.current;
+    if (loadingMoreRef.current || s.oldestReached || s.bars.length === 0) return;
+    loadingMoreRef.current = true;
+    try {
+      const oldest = s.bars[0].time;
+      const r = await fetch(
+        `/api/candles?symbol=${s.symbol}&tf=${s.tf}&days=${s.days}&before=${oldest}`
+      );
+      const data = await r.json();
+      if (!Array.isArray(data)) return;
+
+      const seen = new Set(s.bars.map((b) => b.time));
+      const fresh = data.filter((b) => !seen.has(b.time));
+      if (fresh.length === 0) {
+        setOldestReached(true);
+        return;
+      }
+      setBars((prev) => [...fresh, ...prev]);
+    } catch {
+      // שגיאה שקטה: המשתמש יוכל לנסות שוב בגלילה
+    } finally {
+      loadingMoreRef.current = false;
+    }
+  }
+
+  // טעינה ראשונית בכל שינוי מניה, מסגרת או טווח
   useEffect(() => {
     let cancelled = false;
-    setBars([]);
+    freshRef.current = true;
+    prevLenRef.current = 0;
     liveRef.current = null;
+    setBars([]);
+    setOldestReached(false);
     setLoading(true);
+
     fetch(`/api/candles?symbol=${symbol}&tf=${tf}&days=${days}`)
       .then((r) => r.json())
       .then((data) => {
@@ -137,11 +183,13 @@ export default function StockPage({ symbol, quote, userId, onBack, onTraded }) {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+
     return () => {
       cancelled = true;
     };
   }, [symbol, tf, days]);
 
+  // יצירת סדרה מחדש כשמשנים סוג גרף
   useEffect(() => {
     const chart = chartObj.current;
     if (!chart) return;
@@ -164,19 +212,37 @@ export default function StockPage({ symbol, quote, userId, onBack, onTraded }) {
       });
     }
     seriesRef.current = series;
+    prevLenRef.current = 0;
   }, [type]);
 
+  // הצגת הנתונים: בטעינה ראשונה מתאימים לכל הטווח, בטעינה של נתונים ישנים שומרים על המיקום
   useEffect(() => {
-    if (!seriesRef.current || bars.length === 0) return;
+    const chart = chartObj.current;
+    if (!seriesRef.current || bars.length === 0 || !chart) return;
+
     const data =
       type === 'line' || type === 'area'
         ? bars.map((b) => ({ time: b.time, value: b.c }))
         : bars.map((b) => ({ time: b.time, open: b.o, high: b.h, low: b.l, close: b.c }));
+
+    const added = bars.length - prevLenRef.current;
+    const keepRange = !freshRef.current && added > 0 ? chart.timeScale().getVisibleLogicalRange() : null;
+
     seriesRef.current.setData(data);
-    chartObj.current?.timeScale().fitContent();
+
+    if (freshRef.current) {
+      chart.timeScale().fitContent();
+      freshRef.current = false;
+    } else if (keepRange) {
+      chart.timeScale().setVisibleLogicalRange({
+        from: keepRange.from + added,
+        to: keepRange.to + added,
+      });
+    }
+    prevLenRef.current = bars.length;
   }, [bars, type]);
 
-  // מסגרת דקה: כל מחיר חדש מעדכן את הדקה הנוכחית, או פותח דקה חדשה
+  // עדכון הנר האחרון במסגרת דקה לפי המחיר החי
   useEffect(() => {
     const s = seriesRef.current;
     if (!s || !quote || tf !== '1Min' || bars.length === 0) return;
@@ -259,7 +325,7 @@ export default function StockPage({ symbol, quote, userId, onBack, onTraded }) {
       </div>
 
       <p className="note">
-        הנתונים מ-Alpaca מתעכבים ב-15 דקות (בתוכנית החינמית). במסגרת דקה, המחיר החי מוסיף נקודה לדקה הנוכחית בשעות המסחר.
+        הנתונים מ-Alpaca מתעכבים ב-15 דקות (בתוכנית החינמית). גלול שמאלה כדי לטעון היסטוריה ישנה יותר.
       </p>
 
       {tradeOpen && (
