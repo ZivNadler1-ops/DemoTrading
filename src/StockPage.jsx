@@ -106,7 +106,13 @@ export default function StockPage({ symbol, quote, userId, onBack, onTraded }) {
       layout: { background: { color: '#0b0f14' }, textColor: '#8a94a6' },
       grid: { vertLines: { color: '#161c26' }, horzLines: { color: '#161c26' } },
       rightPriceScale: { borderColor: '#1f2733' },
-      timeScale: { borderColor: '#1f2733', timeVisible: true, secondsVisible: false },
+      timeScale: {
+        borderColor: '#1f2733',
+        timeVisible: true,
+        secondsVisible: false,
+        rightOffset: 2,
+        fixRightEdge: true,
+      },
     });
     chartObj.current = chart;
     const resize = () => chart.applyOptions({ width: chartRef.current.clientWidth });
