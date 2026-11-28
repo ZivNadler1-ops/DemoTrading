@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { loadMessages, sendQuestion } from './lib/chat';
+import { loadPins, setPin } from './lib/pins';
 
-const PINNED = [{ key: 'general', label: 'General' }];
+const GENERAL = { key: 'general', label: 'General' };
 
 const STOCKS = [
   { key: 'NVDA', label: 'NVIDIA (NVDA)' },
@@ -11,10 +12,11 @@ const STOCKS = [
   { key: 'INTC', label: 'Intel (INTC)' },
 ];
 
-const ALL = [...PINNED, ...STOCKS];
+const ALL = [GENERAL, ...STOCKS];
 
 export default function ChatPage({ quotes }) {
   const [messages, setMessages] = useState([]);
+  const [pins, setPins] = useState([]);
   const [question, setQuestion] = useState('');
   const [active, setActive] = useState('general');
   const [query, setQuery] = useState('');
@@ -22,19 +24,25 @@ export default function ChatPage({ quotes }) {
   const logRef = useRef(null);
 
   const isGeneral = active === 'general';
+  const isPinned = pins.includes(active);
   const visible = isGeneral ? messages : messages.filter((m) => m.symbol === active);
   const activeLabel = ALL.find((c) => c.key === active)?.label;
 
   const q = query.trim().toLowerCase();
   const matches = (c) => !q || c.label.toLowerCase().includes(q);
-  const pinned = PINNED.filter(matches);
-  const stocks = STOCKS.filter(matches);
+  const pinnedList = [GENERAL, ...STOCKS.filter((s) => pins.includes(s.key))].filter(matches);
+  const stockList = STOCKS.filter(matches);
 
   useEffect(() => {
     let cancelled = false;
     loadMessages(null)
       .then((rows) => {
         if (!cancelled) setMessages(rows);
+      })
+      .catch(() => {});
+    loadPins()
+      .then((rows) => {
+        if (!cancelled) setPins(rows);
       })
       .catch(() => {});
     return () => {
@@ -46,6 +54,20 @@ export default function ChatPage({ quotes }) {
     const el = logRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [visible.length, busy, active]);
+
+  async function togglePin() {
+    if (isGeneral) return;
+    const next = !isPinned;
+    const symbol = active;
+    setPins((p) => (next ? [...p, symbol] : p.filter((x) => x !== symbol)));
+    try {
+      await setPin(symbol, next);
+    } catch {
+      loadPins()
+        .then(setPins)
+        .catch(() => {});
+    }
+  }
 
   async function ask(e) {
     e.preventDefault();
@@ -96,29 +118,36 @@ export default function ChatPage({ quotes }) {
           placeholder="Search chats"
         />
 
-        {pinned.length > 0 && (
+        {pinnedList.length > 0 && (
           <div className="chat-section">
             <div className="chat-side-title">Pinned</div>
-            {pinned.map(renderItem)}
+            {pinnedList.map(renderItem)}
           </div>
         )}
 
-        {pinned.length > 0 && stocks.length > 0 && <div className="chat-divider" />}
+        {pinnedList.length > 0 && stockList.length > 0 && <div className="chat-divider" />}
 
-        {stocks.length > 0 && (
+        {stockList.length > 0 && (
           <div className="chat-section">
             <div className="chat-side-title">Stocks</div>
-            {stocks.map(renderItem)}
+            {stockList.map(renderItem)}
           </div>
         )}
 
-        {pinned.length === 0 && stocks.length === 0 && (
+        {pinnedList.length === 0 && stockList.length === 0 && (
           <p className="chat-empty-side">לא נמצאו צ'אטים</p>
         )}
       </aside>
 
       <section className="chat-main panel">
-        <h2>{activeLabel}</h2>
+        <div className="chat-head">
+          <h2>{activeLabel}</h2>
+          {!isGeneral && (
+            <button className="pin-btn" onClick={togglePin}>
+              {isPinned ? 'בטל הצמדה' : 'הצמד'}
+            </button>
+          )}
+        </div>
 
         <div className="chat-log chat-page-log" ref={logRef}>
           {visible.length === 0 && !busy && (

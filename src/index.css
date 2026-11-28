@@ -406,3 +406,63 @@ body {
   .chat-divider { width: 1px; height: 24px; margin: 0 6px; }
   .chat-item { white-space: nowrap; }
 }
+/* ===== תיקונים: תפריט, מיקום הקלט, הצמדות ===== */
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  box-sizing: border-box;
+  gap: 8px;
+}
+.nav .navbtn:last-child { margin-left: auto; }
+
+.chat-main.panel {
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 24px;
+}
+.chat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto 12px;
+}
+.chat-head h2 { margin: 0; font-size: 18px; }
+.pin-btn {
+  background: transparent;
+  border: 1px solid #1f2733;
+  color: #c9d1dc;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+}
+.pin-btn:hover { border-color: #3b82f6; }
+
+.chat-page-log {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto 14px;
+}
+.chat-main .chat-form {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+}
+.chat-main .chat-form input {
+  padding: 12px 14px;
+  font-size: 15px;
+}
+.chat-main .chat-form button {
+  padding: 12px 22px;
+  font-size: 15px;
+}
