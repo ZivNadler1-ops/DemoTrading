@@ -44,7 +44,30 @@ async function callGemini(body) {
   }
 
   console.error('Gemini error', last?.status, last?.text);
-  return { ok: false };
+  return { ok: false, status: last?.status ?? 0, detail: last?.text ?? '' };
+}
+
+// מתרגם קוד שגיאה של גוגל להודעה ברורה בעברית
+function explainGeminiError(status, detail) {
+  if (status === 429) {
+    return 'נגמרה המכסה של גוגל ל-Gemini להיום. נסה שוב מחר בבוקר, או פנה למנהל האתר.';
+  }
+  if (status === 503) {
+    return 'שרתי גוגל עמוסים כרגע (תקלה זמנית בצד שלהם). נסה שוב בעוד כמה דקות.';
+  }
+  if (status === 401 || status === 403) {
+    return 'מפתח ה-API של גוגל לא תקין או לא פעיל. צריך לבדוק את ההגדרה ב-Vercel.';
+  }
+  if (status === 404) {
+    return 'שם המודל של גוגל לא נמצא. צריך לעדכן את שם המודל בקוד.';
+  }
+  if (status === 400) {
+    return 'גוגל דחתה את הבקשה (שגיאה 400). כנראה שהגדרה בקוד לא נתמכת על ידי המודל.';
+  }
+  if (status === 0) {
+    return 'לא הצלחתי להתחבר לגוגל. בדוק את החיבור או נסה שוב.';
+  }
+  return `גוגל החזירה שגיאה לא צפויה (קוד ${status}). ${detail.slice(0, 150)}`;
 }
 
 async function getNews(symbol) {
@@ -171,7 +194,7 @@ export default async function handler(req, res) {
     const rows = await r.json();
     const used = rows[0]?.count ?? 0;
     if (used >= DAILY_LIMIT) {
-      return res.status(429).json({ error: `הגעת למגבלה היומית (${DAILY_LIMIT} שאלות ביום).` });
+      return res.status(429).json({ error: `הגעת למגבלה היומית שלך (${DAILY_LIMIT} שאלות ביום).` });
     }
   }
 
@@ -200,7 +223,7 @@ export default async function handler(req, res) {
   });
 
   if (!result.ok) {
-    return res.status(502).json({ error: 'הבוט עמוס כרגע, נסה שוב בעוד כמה דקות' });
+    return res.status(502).json({ error: explainGeminiError(result.status, result.detail) });
   }
 
   const data = result.data;
