@@ -14,6 +14,15 @@ const STOCKS = [
 
 const ALL = [GENERAL, ...STOCKS];
 
+function PinIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 17v5" />
+      <path d="M9 10.76V6a3 3 0 0 1 6 0v4.76l2.5 3.24H6.5L9 10.76Z" />
+    </svg>
+  );
+}
+
 export default function ChatPage({ quotes }) {
   const [messages, setMessages] = useState([]);
   const [pins, setPins] = useState([]);
@@ -24,7 +33,6 @@ export default function ChatPage({ quotes }) {
   const logRef = useRef(null);
 
   const isGeneral = active === 'general';
-  const isPinned = pins.includes(active);
   const visible = isGeneral ? messages : messages.filter((m) => m.symbol === active);
   const activeLabel = ALL.find((c) => c.key === active)?.label;
 
@@ -55,10 +63,8 @@ export default function ChatPage({ quotes }) {
     if (el) el.scrollTop = el.scrollHeight;
   }, [visible.length, busy, active]);
 
-  async function togglePin() {
-    if (isGeneral) return;
-    const next = !isPinned;
-    const symbol = active;
+  async function togglePin(symbol) {
+    const next = !pins.includes(symbol);
     setPins((p) => (next ? [...p, symbol] : p.filter((x) => x !== symbol)));
     try {
       await setPin(symbol, next);
@@ -96,15 +102,27 @@ export default function ChatPage({ quotes }) {
     }
   }
 
-  function renderItem(c) {
+  function renderRow(c) {
+    const isGen = c.key === 'general';
+    const pinned = pins.includes(c.key);
     return (
-      <button
-        key={c.key}
-        className={c.key === active ? 'chat-item on' : 'chat-item'}
-        onClick={() => setActive(c.key)}
-      >
-        {c.label}
-      </button>
+      <div key={c.key} className={c.key === active ? 'chat-row on' : 'chat-row'}>
+        <button className="chat-item" onClick={() => setActive(c.key)}>
+          {c.label}
+        </button>
+        {!isGen && (
+          <button
+            className={pinned ? 'pin-toggle pinned' : 'pin-toggle'}
+            title={pinned ? 'בטל הצמדה' : 'הצמד'}
+            onClick={(e) => {
+              e.stopPropagation();
+              togglePin(c.key);
+            }}
+          >
+            <PinIcon />
+          </button>
+        )}
+      </div>
     );
   }
 
@@ -121,7 +139,7 @@ export default function ChatPage({ quotes }) {
         {pinnedList.length > 0 && (
           <div className="chat-section">
             <div className="chat-side-title">Pinned</div>
-            {pinnedList.map(renderItem)}
+            {pinnedList.map(renderRow)}
           </div>
         )}
 
@@ -130,7 +148,7 @@ export default function ChatPage({ quotes }) {
         {stockList.length > 0 && (
           <div className="chat-section">
             <div className="chat-side-title">Stocks</div>
-            {stockList.map(renderItem)}
+            {stockList.map(renderRow)}
           </div>
         )}
 
@@ -142,11 +160,6 @@ export default function ChatPage({ quotes }) {
       <section className="chat-main panel">
         <div className="chat-head">
           <h2>{activeLabel}</h2>
-          {!isGeneral && (
-            <button className="pin-btn" onClick={togglePin}>
-              {isPinned ? 'בטל הצמדה' : 'הצמד'}
-            </button>
-          )}
         </div>
 
         <div className="chat-log chat-page-log" ref={logRef}>

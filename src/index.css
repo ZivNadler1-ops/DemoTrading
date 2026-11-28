@@ -466,3 +466,52 @@ body {
   padding: 12px 22px;
   font-size: 15px;
 }
+/* ===== תיקון אחרון: תפריט, סיכות, קלט למטה ===== */
+.nav .navbtn:last-child {
+  order: -1;
+  margin-left: auto;
+}
+
+.chat-page {
+  grid-template-rows: 100%;
+}
+
+.chat-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 8px;
+}
+.chat-row:hover { background: #161c26; }
+.chat-row.on { background: #1e3a5f; }
+.chat-row .chat-item {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chat-row .chat-item:hover { background: transparent; }
+.chat-row.on .chat-item { color: #ffffff; }
+
+.pin-toggle {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-inline-end: 4px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #8a94a6;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.chat-row:hover .pin-toggle,
+.pin-toggle.pinned { opacity: 1; }
+.pin-toggle.pinned { color: #60a5fa; }
+.pin-toggle:hover { color: #ffffff; background: #2a3442; }
