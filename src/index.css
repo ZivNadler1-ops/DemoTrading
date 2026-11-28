@@ -334,3 +334,75 @@ body {
   .chat-side-title { display: none; }
   .chat-item { white-space: nowrap; }
 }
+/* ===== גרסה סופית: צ'אט על כל המסך ===== */
+.chat-page {
+  position: fixed;
+  top: 72px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  direction: ltr;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  background: #0b0f14;
+  border-top: 1px solid #1f2733;
+}
+.chat-side {
+  direction: ltr;
+  background: #070a0f;
+  border-right: 1px solid #1f2733;
+  padding: 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+}
+.chat-search {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  border: 1px solid #1f2733;
+  background: #0b0f14;
+  color: inherit;
+  font-size: 13px;
+  font-family: inherit;
+}
+.chat-search:focus { outline: none; border-color: #3b82f6; }
+.chat-section { display: flex; flex-direction: column; gap: 2px; }
+.chat-side-title {
+  font-size: 11px;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 10px 10px 6px;
+}
+.chat-divider {
+  height: 1px;
+  background: #1f2733;
+  margin: 14px 6px;
+}
+.chat-empty-side { color: #6b7280; font-size: 13px; padding: 10px; }
+
+@media (max-width: 700px) {
+  .chat-page {
+    top: 120px;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  .chat-side {
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 8px;
+    border-right: none;
+    border-bottom: 1px solid #1f2733;
+    align-items: center;
+  }
+  .chat-search { width: 140px; margin: 0 6px 0 0; }
+  .chat-side-title { display: none; }
+  .chat-divider { width: 1px; height: 24px; margin: 0 6px; }
+  .chat-item { white-space: nowrap; }
+}

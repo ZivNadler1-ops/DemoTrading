@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { loadMessages, sendQuestion } from './lib/chat';
 
-const CHAT_LIST = [
-  { key: 'general', label: 'General' },
+const PINNED = [{ key: 'general', label: 'General' }];
+
+const STOCKS = [
   { key: 'NVDA', label: 'NVIDIA (NVDA)' },
   { key: 'AMD', label: 'AMD' },
   { key: 'AVGO', label: 'Broadcom (AVGO)' },
@@ -10,16 +11,24 @@ const CHAT_LIST = [
   { key: 'INTC', label: 'Intel (INTC)' },
 ];
 
+const ALL = [...PINNED, ...STOCKS];
+
 export default function ChatPage({ quotes }) {
   const [messages, setMessages] = useState([]);
   const [question, setQuestion] = useState('');
   const [active, setActive] = useState('general');
+  const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
   const logRef = useRef(null);
 
   const isGeneral = active === 'general';
   const visible = isGeneral ? messages : messages.filter((m) => m.symbol === active);
-  const activeLabel = CHAT_LIST.find((c) => c.key === active)?.label;
+  const activeLabel = ALL.find((c) => c.key === active)?.label;
+
+  const q = query.trim().toLowerCase();
+  const matches = (c) => !q || c.label.toLowerCase().includes(q);
+  const pinned = PINNED.filter(matches);
+  const stocks = STOCKS.filter(matches);
 
   useEffect(() => {
     let cancelled = false;
@@ -40,8 +49,8 @@ export default function ChatPage({ quotes }) {
 
   async function ask(e) {
     e.preventDefault();
-    const q = question.trim();
-    if (!q || busy) return;
+    const text = question.trim();
+    if (!text || busy) return;
 
     const symbol = active;
     setBusy(true);
@@ -50,7 +59,7 @@ export default function ChatPage({ quotes }) {
     try {
       await sendQuestion({
         symbol,
-        question: q,
+        question: text,
         price: quote?.price,
         changePct: quote?.changePct,
       });
@@ -65,19 +74,47 @@ export default function ChatPage({ quotes }) {
     }
   }
 
+  function renderItem(c) {
+    return (
+      <button
+        key={c.key}
+        className={c.key === active ? 'chat-item on' : 'chat-item'}
+        onClick={() => setActive(c.key)}
+      >
+        {c.label}
+      </button>
+    );
+  }
+
   return (
     <div className="chat-page">
       <aside className="chat-side">
-        <div className="chat-side-title">Chats</div>
-        {CHAT_LIST.map((c) => (
-          <button
-            key={c.key}
-            className={c.key === active ? 'chat-item on' : 'chat-item'}
-            onClick={() => setActive(c.key)}
-          >
-            {c.label}
-          </button>
-        ))}
+        <input
+          className="chat-search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search chats"
+        />
+
+        {pinned.length > 0 && (
+          <div className="chat-section">
+            <div className="chat-side-title">Pinned</div>
+            {pinned.map(renderItem)}
+          </div>
+        )}
+
+        {pinned.length > 0 && stocks.length > 0 && <div className="chat-divider" />}
+
+        {stocks.length > 0 && (
+          <div className="chat-section">
+            <div className="chat-side-title">Stocks</div>
+            {stocks.map(renderItem)}
+          </div>
+        )}
+
+        {pinned.length === 0 && stocks.length === 0 && (
+          <p className="chat-empty-side">לא נמצאו צ'אטים</p>
+        )}
       </aside>
 
       <section className="chat-main panel">
